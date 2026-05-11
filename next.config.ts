@@ -12,3 +12,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+// Triggering redeploy to fix GitHub 500 error
