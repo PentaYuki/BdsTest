@@ -62,7 +62,7 @@ const pageTitles: Record<string, string> = {
   'deal-detail': 'Chi tiết giao dịch',
 }
 
-function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
+function SidebarNav({ onItemClick, isCollapsed }: { onItemClick?: () => void; isCollapsed: boolean }) {
   const { currentPage, navigate } = useAppStore()
 
   return (
@@ -76,11 +76,20 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
               navigate(item.page)
               onItemClick?.()
             }}
-            className={`nav-sidebar-item ${isActive ? 'active' : ''}`}
+            className={`nav-sidebar-item ${isActive ? 'active' : ''} ${isCollapsed ? 'justify-center !px-0' : ''}`}
+            title={isCollapsed ? item.label : undefined}
           >
-            <item.icon className="size-[18px] shrink-0" />
-            <span className="truncate">{item.label}</span>
-            {isActive && (
+            <item.icon className={`size-[18px] shrink-0 ${isCollapsed ? 'mx-auto' : ''}`} />
+            {!isCollapsed && (
+              <motion.span
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="truncate"
+              >
+                {item.label}
+              </motion.span>
+            )}
+            {!isCollapsed && isActive && (
               <ChevronRight className="ml-auto size-4 opacity-50" />
             )}
           </button>
@@ -90,60 +99,83 @@ function SidebarNav({ onItemClick }: { onItemClick?: () => void }) {
   )
 }
 
-function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
+function SidebarContent({ onItemClick, isCollapsed }: { onItemClick?: () => void; isCollapsed: boolean }) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500">
+      <div 
+        className={`flex items-center gap-3 px-5 py-5 cursor-pointer hover:opacity-90 transition-opacity ${isCollapsed ? 'justify-center !px-0' : ''}`}
+        onClick={() => navigate('dashboard')}
+      >
+        <div className="flex size-9 items-center justify-center rounded-lg bg-blue-600 shrink-0 shadow-lg shadow-blue-500/20">
           <Home className="size-5 text-white" />
         </div>
-        <div>
-          <h1 className="text-base font-bold text-white tracking-tight">
-            De Realty 360
-          </h1>
-          <p className="text-[11px] text-white/50">Môi giới BĐS</p>
-        </div>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1 min-w-0"
+          >
+            <h1 className="text-base font-bold text-white tracking-tight leading-none">
+              De Realty 360
+            </h1>
+            <p className="text-[10px] text-white/40 mt-0.5">Hệ sinh thái BĐS</p>
+          </motion.div>
+        )}
       </div>
 
       <Separator className="bg-white/10 mx-3" />
 
       {/* User Profile */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <Avatar className="size-9 border-2 border-white/20">
+      <div className={`flex items-center gap-3 px-5 py-4 ${isCollapsed ? 'justify-center !px-0' : ''}`}>
+        <Avatar className="size-9 border-2 border-white/20 shrink-0">
           <AvatarFallback className="bg-blue-500 text-white text-xs font-semibold">
             ĐL
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">
-            Lê Hoàng Đệ
-          </p>
-          <p className="text-xs text-white/50 truncate">Môi giới BĐS</p>
-        </div>
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1 min-w-0"
+          >
+            <p className="text-sm font-medium text-white truncate">
+              Lê Hoàng Đệ
+            </p>
+            <p className="text-xs text-white/50 truncate">Môi giới BĐS</p>
+          </motion.div>
+        )}
       </div>
 
       <Separator className="bg-white/10 mx-3" />
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-3 scrollbar-thin">
-        <SidebarNav onItemClick={onItemClick} />
+        <SidebarNav onItemClick={onItemClick} isCollapsed={isCollapsed} />
       </ScrollArea>
 
       {/* Bottom section */}
-      <div className="border-t border-white/10 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-white/40">
-            <div className="size-2 rounded-full bg-emerald-500" />
-            <span>Trực tuyến</span>
-          </div>
-          <button
-            onClick={() => useAppStore.getState().logout()}
-            className="text-xs text-white/40 hover:text-white/70 transition-colors"
+      <div className={`border-t border-white/10 p-4 ${isCollapsed ? 'flex justify-center' : ''}`}>
+        {!isCollapsed ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center justify-between w-full"
           >
-            Đăng xuất
-          </button>
-        </div>
+            <div className="flex items-center gap-2 text-xs text-white/40">
+              <div className="size-2 rounded-full bg-emerald-500" />
+              <span>Trực tuyến</span>
+            </div>
+            <button
+              onClick={() => useAppStore.getState().logout()}
+              className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            >
+              Đăng xuất
+            </button>
+          </motion.div>
+        ) : (
+          <div className="size-2 rounded-full bg-emerald-500" />
+        )}
       </div>
     </div>
   )
@@ -196,6 +228,7 @@ function MobileBottomNav() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { currentPage, sidebarOpen, setSidebarOpen } = useAppStore()
   const isMobile = useIsMobile()
+  const [isHovered, setIsHovered] = React.useState(false)
 
   const pageTitle = pageTitles[currentPage] || 'Tổng quan'
 
@@ -203,9 +236,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <aside className="nav-sidebar w-[260px] shrink-0 flex-col overflow-hidden hidden md:flex">
-          <SidebarContent />
-        </aside>
+        <motion.aside
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          animate={{ width: isHovered ? 260 : 80 }}
+          transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+          className="nav-sidebar shrink-0 flex-col overflow-hidden hidden md:flex shadow-2xl z-30 border-r border-white/5"
+        >
+          <SidebarContent isCollapsed={!isHovered} />
+          
+          {/* Collapse Indicator */}
+          {!isHovered && (
+            <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2 size-4 bg-blue-500 rounded-full flex items-center justify-center shadow-md">
+              <ChevronRight className="size-3 text-white" />
+            </div>
+          )}
+        </motion.aside>
       )}
 
       {/* Mobile Sidebar Sheet */}
@@ -213,7 +259,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetContent side="left" className="w-[280px] p-0 bg-[#1e293b] border-r-0">
             <SheetTitle className="sr-only">Menu điều hướng</SheetTitle>
-            <SidebarContent onItemClick={() => setSidebarOpen(false)} />
+            <SidebarContent onItemClick={() => setSidebarOpen(false)} isCollapsed={false} />
           </SheetContent>
         </Sheet>
       )}

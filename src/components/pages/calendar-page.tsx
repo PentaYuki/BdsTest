@@ -39,8 +39,16 @@ import {
   Plus,
   ListFilter,
   PhoneCall,
+  Calendar as CalendarIcon,
 } from 'lucide-react'
 import { getPriorityLabel, getPriorityColor, getTaskTypeLabel } from '@/lib/format'
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, startOfToday } from 'date-fns'
+
+// Import new calendar components
+import { CalendarHeader } from '@/components/calendar/calendar-header'
+import { MonthView } from '@/components/calendar/month-view'
+import { WeekView } from '@/components/calendar/week-view'
+import { DayView } from '@/components/calendar/day-view'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -186,14 +194,16 @@ function TaskCard({
 
 export function CalendarPage() {
   const queryClient = useQueryClient()
-  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today')
+  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('month')
+  const [viewDate, setViewDate] = useState<Date>(new Date())
   const [filterType, setFilterType] = useState<string>('all')
   const [filterPriority, setFilterPriority] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   // Fetch tasks
-  const { data: tasks = mockTasks, isLoading } = useQuery({
+  const { data: tasks = mockTasks, isLoading } = useQuery<Task[]>({
     queryKey: ['tasks', filterType, filterPriority, filterStatus],
     queryFn: async () => {
       try {
@@ -204,8 +214,41 @@ export function CalendarPage() {
         params.set('limit', '50')
         const res = await fetch(`/api/tasks?${params}`)
         if (!res.ok) throw new Error('Failed')
-        return res.json() as Promise<Task[]>
-      } catch {
+        const json = await res.json()
+        
+        const data = json.data || []
+        
+        return data.map((item: any) => {
+          // Determine entity info from relations
+          let entityName = 'N/A'
+          let entityType = 'other'
+          
+          if (item.taskCustomers?.[0]) {
+            entityName = item.taskCustomers[0].customer.name
+            entityType = 'customer'
+          } else if (item.taskOwners?.[0]) {
+            entityName = item.taskOwners[0].owner.name
+            entityType = 'owner'
+          } else if (item.taskDeals?.[0]) {
+            entityName = item.taskDeals[0].deal.code
+            entityType = 'deal'
+          }
+
+          return {
+            id: item.id,
+            title: item.title,
+            type: item.type,
+            entityType,
+            entityName,
+            dueDate: item.dueDate ? item.dueDate.slice(0, 10) : '',
+            dueTime: item.dueTime || '',
+            priority: item.priority as any,
+            status: item.status as any,
+            description: item.description,
+          }
+        })
+      } catch (error) {
+        console.error('Error fetching tasks:', error)
         return mockTasks
       }
     },
@@ -271,6 +314,22 @@ export function CalendarPage() {
     completeMutation.mutate({ id, status })
   }
 
+  const handlePrev = () => {
+    if (viewMode === 'month') setViewDate(subMonths(viewDate, 1))
+    else if (viewMode === 'week') setViewDate(subWeeks(viewDate, 1))
+    else setViewDate(subDays(viewDate, 1))
+  }
+
+  const handleNext = () => {
+    if (viewMode === 'month') setViewDate(addMonths(viewDate, 1))
+    else if (viewMode === 'week') setViewDate(addWeeks(viewDate, 1))
+    else setViewDate(addDays(viewDate, 1))
+  }
+
+  const handleToday = () => {
+    setViewDate(new Date())
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -288,107 +347,93 @@ export function CalendarPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Stats Bar */}
       <StatsBar tasks={tasks} />
 
-      {/* View Toggle + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-          {(['today', 'week', 'month'] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                viewMode === mode
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {mode === 'today' ? 'Hôm nay' : mode === 'week' ? 'Tuần này' : 'Tháng'}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[130px] h-8 text-xs">
-              <ListFilter className="size-3.5 mr-1" />
-              <SelectValue placeholder="Loại việc" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả loại</SelectItem>
-              <SelectItem value="call_customer">Gọi khách</SelectItem>
-              <SelectItem value="call_owner">Gọi chủ nhà</SelectItem>
-              <SelectItem value="followup">Follow-up</SelectItem>
-              <SelectItem value="post">Đăng bài</SelectItem>
-              <SelectItem value="video">Quay video</SelectItem>
-              <SelectItem value="survey">Khảo sát</SelectItem>
-              <SelectItem value="document">Hồ sơ</SelectItem>
-              <SelectItem value="deposit">Đặt cọc</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterPriority} onValueChange={setFilterPriority}>
-            <SelectTrigger className="w-[100px] h-8 text-xs">
-              <SelectValue placeholder="Ưu tiên" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="high">Cao</SelectItem>
-              <SelectItem value="medium">TB</SelectItem>
-              <SelectItem value="low">Thấp</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="pending">Đang chờ</SelectItem>
-              <SelectItem value="overdue">Quá hạn</SelectItem>
-              <SelectItem value="completed">Hoàn thành</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            className="bg-blue-500 hover:bg-blue-600 h-8"
-            onClick={() => setShowAddDialog(true)}
-          >
-            <Plus className="size-3.5 mr-1" />
-            Thêm task
-          </Button>
-        </div>
+      {/* Calendar Header with Navigation */}
+      <CalendarHeader
+        currentDate={viewDate}
+        viewMode={viewMode}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onToday={handleToday}
+        onViewChange={setViewMode}
+        onAddTask={() => setShowAddDialog(true)}
+      />
+
+      {/* Advanced Filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-[140px] h-9 text-sm bg-white">
+            <ListFilter className="size-4 mr-2" />
+            <SelectValue placeholder="Loại việc" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả loại</SelectItem>
+            <SelectItem value="call_customer">Gọi khách</SelectItem>
+            <SelectItem value="call_owner">Gọi chủ nhà</SelectItem>
+            <SelectItem value="followup">Follow-up</SelectItem>
+            <SelectItem value="post">Đăng bài</SelectItem>
+            <SelectItem value="video">Quay video</SelectItem>
+            <SelectItem value="survey">Khảo sát</SelectItem>
+            <SelectItem value="document">Hồ sơ</SelectItem>
+            <SelectItem value="deposit">Đặt cọc</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterPriority} onValueChange={setFilterPriority}>
+          <SelectTrigger className="w-[120px] h-9 text-sm bg-white">
+            <SelectValue placeholder="Ưu tiên" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả ưu tiên</SelectItem>
+            <SelectItem value="high">Cao</SelectItem>
+            <SelectItem value="medium">Trung bình</SelectItem>
+            <SelectItem value="low">Thấp</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[140px] h-9 text-sm bg-white">
+            <SelectValue placeholder="Trạng thái" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="pending">Đang chờ</SelectItem>
+            <SelectItem value="overdue">Quá hạn</SelectItem>
+            <SelectItem value="completed">Hoàn thành</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Task List Grouped by Date */}
-      <div className="space-y-4">
-        {sortedDates.length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              Không có công việc nào trong khoảng thời gian này
-            </CardContent>
-          </Card>
+      {/* Main Calendar Views */}
+      <div className="min-h-[600px] transition-all duration-300">
+        {viewMode === 'month' && (
+          <MonthView
+            currentDate={viewDate}
+            tasks={tasks}
+            onDayClick={(date) => {
+              setViewDate(date)
+              setViewMode('today')
+            }}
+            onTaskClick={(task) => setSelectedTask(task)}
+          />
         )}
-        {sortedDates.map(date => (
-          <div key={date}>
-            <h3 className="text-sm font-semibold text-slate-600 mb-2 flex items-center gap-2">
-              <span className="size-2 rounded-full bg-blue-500" />
-              {formatDateLabel(date)}
-              <Badge variant="secondary" className="text-[10px]">
-                {grouped[date].length} việc
-              </Badge>
-            </h3>
-            <div className="space-y-2">
-              {grouped[date].map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onToggle={handleToggle}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+        {viewMode === 'week' && (
+          <WeekView
+            currentDate={viewDate}
+            tasks={tasks}
+            onTaskClick={(task) => setSelectedTask(task)}
+            onToggleStatus={handleToggle}
+          />
+        )}
+        {viewMode === 'today' && (
+          <DayView
+            currentDate={viewDate}
+            tasks={tasks}
+            onTaskClick={(task) => setSelectedTask(task)}
+            onToggleStatus={handleToggle}
+          />
+        )}
       </div>
 
       {/* Quick Add Dialog */}

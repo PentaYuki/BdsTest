@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Providers } from "@/components/providers";
 
 const inter = Inter({
-  variable: "--font-geist-sans",
+  variable: "--font-inter",
   subsets: ["latin", "vietnamese"],
 });
 
@@ -40,7 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" suppressHydrationWarning>
-      <body className={`${inter.variable} antialiased bg-background text-foreground`}>
+      <body
+        className={`${inter.variable} antialiased bg-background text-foreground`}
+        suppressHydrationWarning
+      >
         <Providers>
           {children}
         </Providers>

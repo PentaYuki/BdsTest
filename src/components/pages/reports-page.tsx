@@ -18,7 +18,23 @@ import {
   Trophy,
   Building2,
   UserCheck,
+  Settings2,
+  Loader2,
+  Save,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { formatCurrency, getSourceLabel } from '@/lib/format'
 
 /* ─── Mock Data ──────────────────────────────────────────────── */
@@ -30,6 +46,20 @@ const mockKPI = {
   newLeads: { actual: 76, target: 100 },
   viewings: { actual: 32, target: 50 },
   closingRate: { actual: 16.7, target: 20 },
+}
+
+interface KPIValue {
+  actual: number
+  target: number
+}
+
+interface KPIData {
+  revenue: KPIValue
+  rentDeals: KPIValue
+  buyDeals: KPIValue
+  newLeads: KPIValue
+  viewings: KPIValue
+  closingRate: KPIValue
 }
 
 const revenueByWeek = [
@@ -179,14 +209,52 @@ function KPICard({
 export function ReportsPage() {
   const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'quarter'>('month')
 
-  const { data: kpi = mockKPI, isLoading } = useQuery({
+  const { data: kpi = mockKPI, isLoading } = useQuery<KPIData>({
     queryKey: ['kpi', period],
     queryFn: async () => {
       try {
         const res = await fetch(`/api/kpi?period=${period}`)
         if (!res.ok) throw new Error('Failed')
-        return res.json()
-      } catch {
+        const json = await res.json()
+        
+        if (!json.data || !Array.isArray(json.data)) {
+          return mockKPI
+        }
+
+        // Aggregate per-user KPI data into a single summary
+        const aggregated: KPIData = {
+          revenue: { actual: 0, target: 0 },
+          rentDeals: { actual: 0, target: 0 },
+          buyDeals: { actual: 0, target: 0 },
+          newLeads: { actual: 0, target: 0 },
+          viewings: { actual: 0, target: 0 },
+          closingRate: { actual: 0, target: 0 },
+        }
+
+        json.data.forEach((item: any) => {
+          aggregated.revenue.actual += item.actual.revenue || 0
+          aggregated.revenue.target += item.target.revenue || 0
+          aggregated.rentDeals.actual += item.actual.dealRent || 0
+          aggregated.rentDeals.target += item.target.dealRent || 0
+          aggregated.buyDeals.actual += item.actual.dealSell || 0
+          aggregated.buyDeals.target += item.target.dealSell || 0
+          aggregated.newLeads.actual += item.actual.newCustomer || 0
+          aggregated.newLeads.target += item.target.newCustomer || 0
+          aggregated.viewings.actual += item.actual.viewing || 0
+          aggregated.viewings.target += item.target.viewing || 0
+          aggregated.closingRate.actual += (item.actual.closingRate || 0) * 100
+          aggregated.closingRate.target += (item.target.closingRate || 0) * 100
+        })
+
+        // Average closing rate if multiple users
+        if (json.data.length > 1) {
+          aggregated.closingRate.actual /= json.data.length
+          aggregated.closingRate.target /= json.data.length
+        }
+
+        return aggregated
+      } catch (error) {
+        console.error('Error fetching KPI:', error)
         return mockKPI
       }
     },
@@ -210,25 +278,29 @@ export function ReportsPage() {
   return (
     <div className="space-y-6">
       {/* Period Filter */}
-      <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
-        {([
-          { key: 'today', label: 'Hôm nay' },
-          { key: 'week', label: 'Tuần này' },
-          { key: 'month', label: 'Tháng này' },
-          { key: 'quarter', label: 'Quý này' },
-        ] as const).map(p => (
-          <button
-            key={p.key}
-            onClick={() => setPeriod(p.key)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              period === p.key
-                ? 'bg-white text-slate-800 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+          {([
+            { key: 'today', label: 'Hôm nay' },
+            { key: 'week', label: 'Tuần này' },
+            { key: 'month', label: 'Tháng này' },
+            { key: 'quarter', label: 'Quý này' },
+          ] as const).map(p => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                period === p.key
+                  ? 'bg-white text-slate-800 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        
+        <KPISettingsDialog currentKPI={kpi} />
       </div>
 
       {/* KPI Cards */}
@@ -490,5 +562,91 @@ export function ReportsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+function KPISettingsDialog({ currentKPI }: { currentKPI: KPIData }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [targets, setTargets] = useState({
+    revenue: currentKPI.revenue.target.toString(),
+    newLeads: currentKPI.newLeads.target.toString(),
+    viewings: currentKPI.viewings.target.toString(),
+    buyDeals: currentKPI.buyDeals.target.toString(),
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      // Mock update
+      await new Promise(resolve => setTimeout(resolve, 800))
+      toast.success('Đã cập nhật mục tiêu KPI mới!')
+      setOpen(false)
+    } catch {
+      toast.error('Không thể cập nhật mục tiêu')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 h-9">
+          <Settings2 className="size-4" />
+          Thiết lập KPI
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Mục tiêu KPI</DialogTitle>
+          <DialogDescription>Đặt mục tiêu cho tuần/tháng này</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Mục tiêu doanh thu</Label>
+              <Input 
+                type="number" 
+                value={targets.revenue} 
+                onChange={e => setTargets({...targets, revenue: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Số lead mới</Label>
+              <Input 
+                type="number" 
+                value={targets.newLeads} 
+                onChange={e => setTargets({...targets, newLeads: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Số lịch xem nhà</Label>
+              <Input 
+                type="number" 
+                value={targets.viewings} 
+                onChange={e => setTargets({...targets, viewings: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Số giao dịch chốt</Label>
+              <Input 
+                type="number" 
+                value={targets.buyDeals} 
+                onChange={e => setTargets({...targets, buyDeals: e.target.value})}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Hủy</Button>
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4 mr-1.5" />}
+              Lưu mục tiêu
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -38,6 +38,8 @@ import {
   Globe,
 } from 'lucide-react'
 import { formatCurrency, getSourceLabel, getSourceColor } from '@/lib/format'
+import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -97,8 +99,16 @@ function ChannelBadge({ channel }: { channel: string }) {
 export function MarketingPage() {
   const [channelFilter, setChannelFilter] = useState<string>('all')
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    channel: 'facebook',
+    propertyLinked: '',
+    cost: '',
+  })
+  const queryClient = useQueryClient()
 
-  const { data: campaigns = mockCampaigns, isLoading } = useQuery({
+  const { data: campaigns = mockCampaigns, isLoading } = useQuery<Campaign[]>({
     queryKey: ['campaigns', channelFilter],
     queryFn: async () => {
       try {
@@ -107,8 +117,25 @@ export function MarketingPage() {
         params.set('limit', '20')
         const res = await fetch(`/api/campaigns?${params}`)
         if (!res.ok) throw new Error('Failed')
-        return res.json() as Promise<Campaign[]>
-      } catch {
+        const json = await res.json()
+        
+        const data = json.data || []
+        
+        // Map API fields to UI fields
+        return data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          channel: item.channel,
+          postDate: item.postDate,
+          propertyLinked: item.propertyId || 'N/A',
+          leads: item.leadsGenerated || 0,
+          viewings: item.viewingsGenerated || 0,
+          deals: item.dealsGenerated || 0,
+          revenue: item.revenue || 0,
+          cost: item.cost || 0,
+        }))
+      } catch (error) {
+        console.error('Error fetching campaigns:', error)
         return mockCampaigns
       }
     },
@@ -373,20 +400,49 @@ export function MarketingPage() {
             <DialogDescription>Tạo chiến dịch marketing mới</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault()
-              setShowAddDialog(false)
+              if (!formData.name) return
+              setLoading(true)
+              try {
+                const res = await fetch('/api/campaigns', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    ...formData,
+                    cost: parseFloat(formData.cost) || 0,
+                    postDate: new Date().toISOString(),
+                  }),
+                })
+                if (!res.ok) throw new Error('Failed')
+                toast.success('Đã tạo chiến dịch marketing mới!')
+                queryClient.invalidateQueries({ queryKey: ['campaigns'] })
+                setShowAddDialog(false)
+                setFormData({ name: '', channel: 'facebook', propertyLinked: '', cost: '' })
+              } catch {
+                toast.error('Không thể tạo chiến dịch')
+              } finally {
+                setLoading(false)
+              }
             }}
             className="space-y-4"
           >
             <div className="space-y-2">
               <Label>Tên chiến dịch *</Label>
-              <Input placeholder="Căn hộ Vinhomes..." />
+              <Input 
+                placeholder="Căn hộ Vinhomes..." 
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Kênh</Label>
-                <Select defaultValue="facebook">
+                <Select 
+                  value={formData.channel} 
+                  onValueChange={v => setFormData({...formData, channel: v})}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -401,23 +457,32 @@ export function MarketingPage() {
               </div>
               <div className="space-y-2">
                 <Label>Ngày đăng</Label>
-                <Input type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
+                <Input type="date" defaultValue={new Date().toISOString().slice(0, 10)} disabled />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Tài sản liên kết</Label>
-              <Input placeholder="Tên tài sản..." />
+              <Input 
+                placeholder="Tên tài sản..." 
+                value={formData.propertyLinked}
+                onChange={e => setFormData({...formData, propertyLinked: e.target.value})}
+              />
             </div>
             <div className="space-y-2">
               <Label>Chi phí</Label>
-              <Input type="number" placeholder="0" />
+              <Input 
+                type="number" 
+                placeholder="0" 
+                value={formData.cost}
+                onChange={e => setFormData({...formData, cost: e.target.value})}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
                 Hủy
               </Button>
-              <Button type="submit" className="bg-pink-500 hover:bg-pink-600">
-                Tạo chiến dịch
+              <Button type="submit" className="bg-pink-500 hover:bg-pink-600" disabled={loading}>
+                {loading ? 'Đang tạo...' : 'Tạo chiến dịch'}
               </Button>
             </DialogFooter>
           </form>

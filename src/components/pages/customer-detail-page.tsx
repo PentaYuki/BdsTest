@@ -36,6 +36,8 @@ import {
   Tag,
   Plus,
   Send,
+  Zap,
+  CheckCircle2,
 } from 'lucide-react'
 import {
   getHeatColor,
@@ -348,6 +350,9 @@ export function CustomerDetailPage() {
           <TabsTrigger value="deals" className="text-xs px-3 py-1.5">
             Deal
           </TabsTrigger>
+          <TabsTrigger value="matching" className="text-xs px-3 py-1.5">
+            Gợi ý sản phẩm
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Basic Info */}
@@ -644,7 +649,86 @@ export function CustomerDetailPage() {
             ))
           )}
         </TabsContent>
+        {/* Tab 6: Matching Properties */}
+        <TabsContent value="matching" className="mt-4">
+          <MatchingPropertiesTab customer={customer} />
+        </TabsContent>
       </Tabs>
     </div>
+  )
+}
+function MatchingPropertiesTab({ customer }: { customer: CustomerDetail }) {
+  const { navigate } = useAppStore()
+  
+  // Search for properties matching area, type or budget
+  const { data, isLoading } = useQuery({
+    queryKey: ['matching-properties', customer.id],
+    queryFn: async () => {
+      let url = `/api/properties?limit=10`
+      if (customer.areaInterest) {
+        url += `&search=${encodeURIComponent(customer.areaInterest)}`
+      } else if (customer.propertyType) {
+        url += `&propertyType=${encodeURIComponent(customer.propertyType)}`
+      }
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Failed to fetch properties')
+      return res.json()
+    }
+  })
+
+  const properties = data?.data || []
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Zap className="size-4 text-amber-500 fill-amber-500" />
+          Sản phẩm gợi ý cho khách ({properties.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
+          </div>
+        ) : properties.length > 0 ? (
+          <div className="grid grid-cols-1 gap-3">
+            {properties.map((p: any) => (
+              <div
+                key={p.id}
+                className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all cursor-pointer group"
+                onClick={() => navigate('property-detail', p.id)}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex size-10 items-center justify-center rounded-lg bg-slate-100 shrink-0 group-hover:bg-blue-100 transition-colors">
+                    <Building2 className="size-5 text-slate-500 group-hover:text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{p.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {p.code} · {p.area || '—'} · {p.bedrooms || '—'}PN
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end shrink-0 ml-4">
+                  <p className="text-sm font-bold text-amber-600">{formatCurrency(p.price)}</p>
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] text-blue-600 p-0 hover:bg-transparent">
+                    Gắn khách
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <Zap className="size-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Không tìm thấy sản phẩm phù hợp tự động</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('properties')}>
+              Tìm kiếm thủ công
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

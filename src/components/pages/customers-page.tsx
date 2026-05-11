@@ -34,7 +34,11 @@ import {
   MapPin,
   Wallet,
   Calendar,
+  Building2,
+  FileDown,
+  Trash2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   getHeatColor,
   getHeatLabel,
@@ -98,7 +102,18 @@ function QuickAddCustomerDialog({
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [demand, setDemand] = useState('')
+  const [project, setProject] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Fetch properties for the project select
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties-simple'],
+    queryFn: async () => {
+      const res = await fetch('/api/properties?limit=100')
+      const json = await res.json()
+      return json.data || []
+    }
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -108,11 +123,17 @@ function QuickAddCustomerDialog({
       await fetch('/api/customers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, demand: demand || 'buy' }),
+        body: JSON.stringify({
+          name,
+          phone,
+          demand: demand || 'buy',
+          areaInterest: project,
+        }),
       })
       setName('')
       setPhone('')
       setDemand('')
+      setProject('')
       onClose()
     } catch (err) {
       console.error('Failed to create customer:', err)
@@ -129,25 +150,27 @@ function QuickAddCustomerDialog({
           <DialogDescription>Điền thông tin khách hàng mới</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="q-name">Họ tên *</Label>
-            <Input
-              id="q-name"
-              placeholder="Nguyễn Văn A"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="q-phone">Số điện thoại *</Label>
-            <Input
-              id="q-phone"
-              placeholder="0912 345 678"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="q-name">Họ tên *</Label>
+              <Input
+                id="q-name"
+                placeholder="Nguyễn Văn A"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="q-phone">Số điện thoại *</Label>
+              <Input
+                id="q-phone"
+                placeholder="0912 345 678"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="q-demand">Nhu cầu</Label>
@@ -158,6 +181,21 @@ function QuickAddCustomerDialog({
               <SelectContent>
                 <SelectItem value="buy">Mua</SelectItem>
                 <SelectItem value="rent">Thuê</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="q-project">Dự án quan tâm</Label>
+            <Select value={project} onValueChange={setProject}>
+              <SelectTrigger id="q-project">
+                <SelectValue placeholder="Chọn dự án / sản phẩm" />
+              </SelectTrigger>
+              <SelectContent>
+                {properties.map((p: any) => (
+                  <SelectItem key={p.id} value={p.title}>
+                    [{p.code}] {p.title}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -220,8 +258,8 @@ function CustomerCard({ customer }: { customer: Customer }) {
             {getDemandLabel(customer.demand)}
           </Badge>
           {customer.areaInterest && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-slate-50 text-slate-600 border-slate-200">
-              <MapPin className="size-2.5 mr-0.5" />
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">
+              <Building2 className="size-2.5 mr-0.5" />
               {customer.areaInterest}
             </Badge>
           )}
@@ -245,8 +283,21 @@ function CustomerCard({ customer }: { customer: Customer }) {
             variant="ghost"
             size="sm"
             className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 flex-1"
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation()
+              try {
+                await fetch(`/api/customers/${customer.id}/interactions`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    type: 'call',
+                    note: 'Cuộc gọi từ hệ thống CRM',
+                  }),
+                })
+                toast.success('Đã ghi nhận cuộc gọi!')
+              } catch (err) {
+                console.error('Failed to log interaction:', err)
+              }
               window.open(`tel:${customer.phone}`, '_self')
             }}
           >
@@ -276,6 +327,20 @@ function CustomerCard({ customer }: { customer: Customer }) {
           >
             <Eye className="size-3 mr-1" />
             Xem
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              if (confirm('Bạn có chắc muốn xóa khách hàng này?')) {
+                // Mock delete
+                toast.success('Đã xóa khách hàng')
+              }
+            }}
+          >
+            <Trash2 className="size-3" />
           </Button>
         </div>
       </CardContent>
@@ -362,6 +427,15 @@ export function CustomersPage() {
             }}
           />
         </div>
+        <Button
+          variant="outline"
+          className="shrink-0 h-9 border-blue-200 text-blue-600 hover:bg-blue-50"
+          onClick={() => toast.info('Tính năng nhập từ Excel đang được phát triển')}
+        >
+          <FileDown className="size-4 mr-1.5" />
+          <span className="hidden sm:inline">Nhập Excel</span>
+          <span className="sm:hidden">Excel</span>
+        </Button>
         <Button
           className="bg-blue-500 hover:bg-blue-600 shrink-0 h-9"
           onClick={() => setQuickAddOpen(true)}

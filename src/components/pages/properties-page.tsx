@@ -89,17 +89,41 @@ function PropertyCard({ property }: { property: Property }) {
   const { navigate } = useAppStore()
   const statusColor = getStatusColor(property.status)
 
+  // Safely parse images
+  let imageUrls: string[] = []
+  try {
+    if (property.images) {
+      imageUrls = JSON.parse(property.images)
+    }
+  } catch (e) {
+    console.error('Failed to parse property images', e)
+  }
+
+  const hasImage = imageUrls.length > 0
+
   return (
     <Card
       className="group cursor-pointer overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5"
       onClick={() => navigate('property-detail', property.id)}
     >
       {/* Thumbnail */}
-      <div className={`relative h-40 bg-gradient-to-br ${getPropertyGradient(property.propertyType)} flex items-center justify-center`}>
-        <PropertyTypeIcon type={property.propertyType} />
+      <div className={`relative h-44 flex items-center justify-center overflow-hidden bg-slate-100`}>
+        {hasImage ? (
+          <img
+            src={imageUrls[0]}
+            alt={property.title}
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className={`size-full bg-gradient-to-br ${getPropertyGradient(property.propertyType)} flex items-center justify-center`}>
+            <PropertyTypeIcon type={property.propertyType} />
+          </div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
         {/* Property code badge */}
-        <Badge className="absolute top-2 left-2 bg-white/90 text-slate-700 text-[10px] font-semibold hover:bg-white/90">
+        <Badge className="absolute top-2 left-2 bg-white/90 text-slate-700 text-[10px] font-semibold hover:bg-white/90 shadow-sm">
           {property.code}
         </Badge>
 

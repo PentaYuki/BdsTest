@@ -26,7 +26,18 @@ import {
   Calendar,
   Building2,
   GripVertical,
+  Info,
+  UserCheck,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import {
   formatCurrency,
   getStageLabel,
@@ -75,6 +86,84 @@ interface Deal {
   user?: { id: string; name: string; role: string } | null
 }
 
+function RoleGuideDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" className="size-8 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-full transition-all">
+          <Info className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-slate-800">
+            <ShieldCheck className="size-6 text-blue-500" />
+            Hướng dẫn vai trò & Quy trình
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Team Roles Section */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <UserCheck className="size-4" />
+              Vai trò trong hệ thống
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg border bg-slate-50">
+                <p className="font-bold text-slate-800 text-sm">Admin (Quản trị viên)</p>
+                <p className="text-xs text-slate-600 mt-1">Toàn quyền kiểm soát hệ thống, phê duyệt các giao dịch lớn và quản lý nhân sự.</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-blue-50 border-blue-100">
+                <p className="font-bold text-blue-800 text-sm">Sales (Môi giới)</p>
+                <p className="text-xs text-blue-600 mt-1">Chịu trách nhiệm chính trong việc chăm sóc khách hàng và chốt giao dịch trên Pipeline.</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-emerald-50 border-emerald-100">
+                <p className="font-bold text-emerald-800 text-sm">Assistant (Trợ lý)</p>
+                <p className="text-xs text-emerald-600 mt-1">Hỗ trợ soạn thảo hợp đồng, kiểm tra tính pháp lý của tài liệu và phối hợp với chủ nhà.</p>
+              </div>
+              <div className="p-3 rounded-lg border bg-amber-50 border-amber-100">
+                <p className="font-bold text-amber-800 text-sm">Marketing (Tiếp thị)</p>
+                <p className="text-xs text-amber-600 mt-1">Vận hành các chiến dịch quảng cáo, thu thập Lead mới và chuyển giao cho đội Sales.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Pipeline Stages Section */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+              <Zap className="size-4" />
+              Quy trình Pipeline
+            </h3>
+            <div className="space-y-2">
+              {[
+                { stage: 'Lead mới', role: 'Marketing/Sales', desc: 'Sàng lọc thông tin khách hàng từ các kênh quảng cáo.' },
+                { stage: 'Xác định nhu cầu', role: 'Sales', desc: 'Tìm hiểu kỹ mong muốn, ngân sách và khu vực quan tâm.' },
+                { stage: 'Đã xem nhà', role: 'Sales', desc: 'Dẫn khách đi thực tế và tư vấn trực tiếp tại dự án.' },
+                { stage: 'Đàm phán', role: 'Sales/Admin', desc: 'Thống nhất giá cả và các điều khoản giữa chủ nhà và khách.' },
+                { stage: 'Đã cọc', role: 'Sales/Assistant', desc: 'Hoàn tất thủ tục đặt cọc và chuẩn bị hồ sơ chuyển nhượng.' },
+                { stage: 'Hoàn tất', role: 'Tất cả', desc: 'Giao dịch thành công, ghi nhận doanh thu và hoa hồng.' }
+              ].map((item, index) => (
+                <div key={index} className="flex gap-3 p-2.5 rounded-md border-l-4 border-l-blue-500 bg-white shadow-sm border">
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <p className="font-bold text-slate-800 text-sm">{item.stage}</p>
+                      <Badge variant="outline" className="text-[10px] font-medium text-blue-600 bg-blue-50 border-blue-200">
+                        {item.role}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function DealCard({ deal, isDragOverlay = false }: { deal: Deal; isDragOverlay?: boolean }) {
   const { navigate } = useAppStore()
   const {
@@ -107,7 +196,7 @@ function DealCard({ deal, isDragOverlay = false }: { deal: Deal; isDragOverlay?:
       }`}
       onClick={() => navigate('deal-detail', deal.id)}
     >
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-2.5 space-y-1.5">
         {/* Drag handle + customer name */}
         <div className="flex items-start gap-1.5">
           {!isDragOverlay && (
@@ -120,7 +209,7 @@ function DealCard({ deal, isDragOverlay = false }: { deal: Deal; isDragOverlay?:
             </button>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 truncate">{customerName}</p>
+            <p className="text-[13px] font-bold text-slate-800 truncate leading-tight">{customerName}</p>
           </div>
           <Badge variant="outline" className={`text-[9px] shrink-0 ${stageColor.bg} ${stageColor.text} border-0`}>
             {deal.code}
@@ -137,8 +226,8 @@ function DealCard({ deal, isDragOverlay = false }: { deal: Deal; isDragOverlay?:
 
         {/* Value + Commission */}
         {deal.value != null && (
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-amber-600">{formatCurrency(deal.value)}</span>
+          <div className="flex items-center justify-between pt-0.5">
+            <span className="text-[13px] font-bold text-amber-600">{formatCurrency(deal.value)}</span>
             {deal.expectedCommission != null && (
               <span className="text-[10px] text-emerald-600">
                 HOA: {formatCurrency(deal.expectedCommission)}
@@ -188,15 +277,15 @@ function KanbanColumn({
   const borderColor = getStageBorderColor(stage.key)
 
   return (
-    <div className="flex flex-col min-w-[280px] max-w-[320px] w-[280px] shrink-0">
+    <div className="flex flex-col min-w-[210px] max-w-[260px] w-[210px] shrink-0 group">
       {/* Column header */}
-      <div className={`rounded-t-lg border border-b-0 bg-white ${borderColor} border-t-4`}>
-        <div className="flex items-center justify-between p-3">
+      <div className={`rounded-t-xl border border-b-0 bg-white ${borderColor} border-t-4 transition-all group-hover:shadow-sm`}>
+        <div className="flex items-center justify-between p-2.5">
           <div className="flex items-center gap-2">
             <div className={`size-2.5 rounded-full ${stageColor.dot}`} />
-            <h3 className="text-sm font-semibold text-slate-800">{stage.label}</h3>
+            <h3 className="text-xs font-bold text-slate-800 tracking-tight uppercase">{stage.label}</h3>
           </div>
-          <Badge variant="secondary" className="text-[10px] font-semibold">
+          <Badge variant="secondary" className="text-[9px] h-4.5 px-1.5 font-bold bg-slate-100 text-slate-500">
             {deals.length}
           </Badge>
         </div>
@@ -204,7 +293,7 @@ function KanbanColumn({
 
       {/* Cards */}
       <SortableContext items={deals.map((d) => d.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2 p-2 bg-slate-50/50 border border-t-0 rounded-b-lg min-h-[200px] max-h-[calc(100vh-280px)] overflow-y-auto scrollbar-content">
+        <div className="flex flex-col gap-2 p-2 bg-slate-50/40 border border-t-0 rounded-b-xl min-h-[400px] max-h-[calc(100vh-220px)] overflow-y-auto scrollbar-content transition-all group-hover:bg-slate-50/60">
           {deals.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-xs text-muted-foreground">Trống</p>
@@ -452,10 +541,19 @@ export function DealsPage() {
   // Desktop Kanban view
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-slate-800">Pipeline giao dịch</h2>
-          <Badge variant="secondary" className="text-xs">{deals.length} giao dịch</Badge>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <div className="space-y-0.5">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              Pipeline giao dịch
+              <RoleGuideDialog />
+            </h2>
+            <div className="flex items-center gap-2">
+              <Badge className="text-[10px] bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 transition-colors">
+                {deals.length} giao dịch đang xử lý
+              </Badge>
+            </div>
+          </div>
         </div>
         <Button
           className="bg-violet-500 hover:bg-violet-600 text-white"

@@ -3,153 +3,132 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// USER & AUTH
-// ============================================
-
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  phone     String?
-  password  String
-  avatar    String?
-  role      String   @default("sales") // admin, sales, assistant, marketing
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id         String     @id @default(cuid())
+  email      String     @unique
+  name       String
+  phone      String?
+  password   String
+  avatar     String?
+  role       String     @default("sales")
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
   customers  Customer[]
-  properties Property[]
   deals      Deal[]
+  properties Property[]
   tasks      Task[]
 }
 
-// ============================================
-// CUSTOMER (CRM)
-// ============================================
-
 model Customer {
-  id            String   @id @default(cuid())
-  code          String   @unique // KH-001
+  id            String         @id @default(cuid())
+  code          String         @unique
   name          String
   phone         String
   email         String?
   zalo          String?
   whatsapp      String?
-  nationality   String   @default("Việt Nam")
-  language      String   @default("Tiếng Việt")
-  type          String   @default("buy") // rent, buy, invest, foreign, old, referral, unknown
-  demand        String   @default("buy") // rent, buy
-  propertyType  String?  // apartment, house, land, shophouse
-  areaInterest  String?  // Quận 7, Nhà Bè, Bình Chánh
+  nationality   String         @default("Việt Nam")
+  language      String         @default("Tiếng Việt")
+  type          String         @default("buy")
+  demand        String         @default("buy")
+  propertyType  String?
+  areaInterest  String?
   budget        String?
-  timeframe     String?  // 1-3 tháng, 3-6 tháng, trên 6 tháng
-  heatLevel     String   @default("warm") // hot, warm, cold
-  source        String?  // facebook, zalo, tiktok, website, listing, referral, old_customer, owner, partner, offline
+  timeframe     String?
+  heatLevel     String         @default("warm")
+  source        String?
   assignedTo    String?
-  notes         String?  // Ghi chú tính cách / thói quen / nhu cầu đặc biệt
+  notes         String?
   lastContact   DateTime?
   nextFollowUp  DateTime?
-  status        String   @default("new") // new, consulting, viewing, negotiating, closed, lost
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user         User?          @relation(fields: [assignedTo], references: [id])
-  interactions Interaction[]
+  status        String         @default("new")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User?          @relation(fields: [assignedTo], references: [id])
   dealCustomers DealCustomer[]
-  taskCustomers TaskCustomer[]
+  interactions  Interaction[]
   propertyViews PropertyView[]
+  taskCustomers TaskCustomer[]
 
   @@map("customers")
 }
 
 model Interaction {
-  id          String   @id @default(cuid())
-  customerId  String
-  type        String   // call, message, viewing, note, email
-  content     String
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
-
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  customerId String
+  type       String
+  content    String
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@map("interactions")
 }
 
-// ============================================
-// OWNER (Chủ nhà / Chủ bán)
-// ============================================
-
 model Owner {
-  id              String   @id @default(cuid())
-  code            String   @unique // CH-001
-  name            String
-  phone           String
-  contactChannel  String?  // điện thoại, zalo, gặp trực tiếp
-  area            String?  // Khu vực tài sản chính
-  cooperationLevel String  @default("B") // A, B, C
-  trustLevel      String   @default("medium") // high, medium, low
+  id               String      @id @default(cuid())
+  code             String      @unique
+  name             String
+  phone            String
+  contactChannel   String?
+  area             String?
+  cooperationLevel String      @default("B")
+  trustLevel       String      @default("medium")
   commissionPolicy String?
-  notes           String?  // Ghi chú phong cách làm việc
-  lastContact     DateTime?
-  nextUpdate      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  properties  Property[]
-  ownerTasks  TaskOwner[]
+  notes            String?
+  lastContact      DateTime?
+  nextUpdate       DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  properties       Property[]
+  ownerTasks       TaskOwner[]
 
   @@map("owners")
 }
 
-// ============================================
-// PROPERTY (Kho hàng BĐS)
-// ============================================
-
 model Property {
-  id              String   @id @default(cuid())
-  code            String   @unique // SP-001
-  title           String
-  propertyType    String   @default("apartment") // apartment, house, land, shophouse, special
-  demand          String   @default("sell") // rent, sell
-  area            String?  // Quận 7, Nhà Bè, Bình Chánh
-  address         String?
-  project         String?  // Dự án / khu dân cư
-  landArea        Float?
-  useArea         Float?
-  bedrooms        Int?
-  bathrooms       Int?
-  furniture       String?  // Đầy đủ, Cơ bản, Không nội thất
-  direction       String?  // Đông, Tây, Nam, Bắc
-  price           Float    // Giá chào
-  expectedPrice   Float?   // Giá chốt kỳ vọng
-  legalStatus     String?  // Sổ hồng, Sổ đỏ, Hợp đồng, Đang chờ
-  planningStatus  String?  // Không quy hoạch, Cần kiểm tra
-  images          String?  // JSON array of image URLs
-  videos          String?  // JSON array of video URLs
-  ownerId         String?
-  status          String   @default("new") // new, active, deposited, closed, paused
-  attractiveness  String   @default("medium") // high, medium, low
-  easyToClose     String   @default("medium") // high, medium, low
-  isHot           Boolean  @default(false)
-  isExclusive     Boolean  @default(false)
-  lastUpdated     DateTime @default(now())
-  description     String?
-  assignedTo      String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  owner          Owner?         @relation(fields: [ownerId], references: [id])
-  user           User?          @relation(fields: [assignedTo], references: [id])
+  id             String         @id @default(cuid())
+  code           String         @unique
+  title          String
+  propertyType   String         @default("apartment")
+  demand         String         @default("sell")
+  area           String?
+  address        String?
+  project        String?
+  landArea       Float?
+  useArea        Float?
+  bedrooms       Int?
+  bathrooms      Int?
+  furniture      String?
+  direction      String?
+  price          Float
+  expectedPrice  Float?
+  legalStatus    String?
+  planningStatus String?
+  images         String?
+  videos         String?
+  ownerId        String?
+  status         String         @default("new")
+  attractiveness String         @default("medium")
+  easyToClose    String         @default("medium")
+  isHot          Boolean        @default(false)
+  isExclusive    Boolean        @default(false)
+  lastUpdated    DateTime       @default(now())
+  description    String?
+  assignedTo     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   dealProperties DealProperty[]
-  propertyViews  PropertyView[]
   priceHistory   PriceHistory[]
+  user           User?          @relation(fields: [assignedTo], references: [id])
+  owner          Owner?         @relation(fields: [ownerId], references: [id])
   propertyDocs   PropertyDoc[]
+  propertyViews  PropertyView[]
 
   @@map("properties")
 }
@@ -160,8 +139,7 @@ model PriceHistory {
   price      Float
   note       String?
   date       DateTime @default(now())
-
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("price_history")
 }
@@ -170,114 +148,99 @@ model PropertyView {
   id         String   @id @default(cuid())
   propertyId String
   customerId String
-  feedback   String?  // Cảm nhận khách
+  feedback   String?
   date       DateTime @default(now())
-
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_views")
 }
 
-// ============================================
-// DEAL (Pipeline giao dịch)
-// ============================================
-
 model Deal {
-  id              String   @id @default(cuid())
-  code            String   @unique // GD-001
-  type            String   @default("sell") // rent, sell
-  value           Float?
+  id                 String         @id @default(cuid())
+  code               String         @unique
+  type               String         @default("sell")
+  value              Float?
   expectedCommission Float?
   actualCommission   Float?
-  stage           String   @default("new_lead") // new_lead, need_identified, product_sent, viewed, negotiating, deposited, completed, lost
-  expectedCloseDate DateTime?
-  risk            String?  // Rủi ro chính
-  nextStep        String?  // Bước tiếp theo
-  assignedTo      String?
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user           User?          @relation(fields: [assignedTo], references: [id])
-  dealCustomers  DealCustomer[]
-  dealProperties DealProperty[]
-  dealDocs       DealDoc[]
-  dealTasks      TaskDeal[]
+  stage              String         @default("new_lead")
+  expectedCloseDate  DateTime?
+  risk               String?
+  nextStep           String?
+  assignedTo         String?
+  notes              String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  dealCustomers      DealCustomer[]
+  dealDocs           DealDoc[]
+  dealProperties     DealProperty[]
+  user               User?          @relation(fields: [assignedTo], references: [id])
+  dealTasks          TaskDeal[]
 
   @@map("deals")
 }
 
 model DealCustomer {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   dealId     String
   customerId String
-
-  deal     Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   @@unique([dealId, customerId])
   @@map("deal_customers")
 }
 
 model DealProperty {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   dealId     String
   propertyId String
-
-  deal     Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   @@unique([dealId, propertyId])
   @@map("deal_properties")
 }
 
-// ============================================
-// TASK (Công việc, lịch hẹn, follow-up)
-// ============================================
-
 model Task {
-  id          String    @id @default(cuid())
-  title       String
-  type        String    @default("call") // call_customer, call_owner, followup, post, video, survey, document, deposit, other
-  priority    String    @default("medium") // high, medium, low
-  status      String    @default("pending") // pending, completed, overdue
-  dueDate     DateTime
-  dueTime     String?
-  description String?
-  isRecurring Boolean   @default(false)
-  recurPattern String?  // daily, weekly, monthly
-  assignedTo  String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  user          User?         @relation(fields: [assignedTo], references: [id])
+  id            String         @id @default(cuid())
+  title         String
+  type          String         @default("call")
+  priority      String         @default("medium")
+  status        String         @default("pending")
+  dueDate       DateTime
+  dueTime       String?
+  description   String?
+  isRecurring   Boolean        @default(false)
+  recurPattern  String?
+  assignedTo    String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   taskCustomers TaskCustomer[]
-  taskOwners    TaskOwner[]
   taskDeals     TaskDeal[]
+  taskOwners    TaskOwner[]
+  user          User           @relation(fields: [assignedTo], references: [id])
 
   @@map("tasks")
 }
 
 model TaskCustomer {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   taskId     String
   customerId String
-
-  task     Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, customerId])
   @@map("task_customers")
 }
 
 model TaskOwner {
-  id     String @id @default(cuid())
-  taskId String
+  id      String @id @default(cuid())
+  taskId  String
   ownerId String
-
-  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  owner Owner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner   Owner  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, ownerId])
   @@map("task_owners")
@@ -287,86 +250,71 @@ model TaskDeal {
   id     String @id @default(cuid())
   taskId String
   dealId String
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, dealId])
   @@map("task_deals")
 }
 
-// ============================================
-// MARKETING
-// ============================================
-
 model Campaign {
-  id          String   @id @default(cuid())
-  name        String
-  channel     String   // facebook, zalo, tiktok, website, listing, partner
-  postDate    DateTime?
-  content     String?
-  propertyId  String?
-  cost        Float    @default(0)
-  leadsGenerated Int   @default(0)
-  viewingsGenerated Int @default(0)
-  dealsGenerated Int   @default(0)
-  revenue     Float    @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String    @id @default(cuid())
+  name              String
+  channel           String
+  postDate          DateTime?
+  content           String?
+  propertyId        String?
+  cost              Float     @default(0)
+  leadsGenerated    Int       @default(0)
+  viewingsGenerated Int       @default(0)
+  dealsGenerated    Int       @default(0)
+  revenue           Float     @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("campaigns")
 }
 
-// ============================================
-// DOCUMENTS (Hồ sơ pháp lý)
-// ============================================
-
 model PropertyDoc {
   id         String   @id @default(cuid())
   name       String
-  type       String   // cccd, pink_book, red_book, planning, brokerage_contract, deposit_slip, receipt, photo, other
+  type       String
   fileUrl    String
   propertyId String
-  status     String   @default("sufficient") // sufficient, missing, needs_update
+  status     String   @default("sufficient")
   createdAt  DateTime @default(now())
-
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("property_docs")
 }
 
 model DealDoc {
-  id       String   @id @default(cuid())
-  name     String
-  type     String   // contract, deposit_slip, receipt, photo, other
-  fileUrl  String
-  dealId   String
-  status   String   @default("sufficient") // sufficient, missing, needs_update
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  fileUrl   String
+  dealId    String
+  status    String   @default("sufficient")
   createdAt DateTime @default(now())
-
-  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   @@map("deal_docs")
 }
 
-// ============================================
-// KPI Settings
-// ============================================
-
 model KPITarget {
-  id           String   @id @default(cuid())
-  userId       String
-  period       String   // 2024-01, 2024-Q1, 2024
-  revenueTarget Float  @default(0)
-  dealRentTarget Int   @default(0)
-  dealSellTarget Int   @default(0)
-  newCustomerTarget Int @default(0)
-  newOwnerTarget Int   @default(0)
-  newPropertyTarget Int @default(0)
-  viewingTarget Int    @default(0)
-  closingRateTarget Float @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String
+  period            String
+  revenueTarget     Float    @default(0)
+  dealRentTarget    Int      @default(0)
+  dealSellTarget    Int      @default(0)
+  newCustomerTarget Int      @default(0)
+  newOwnerTarget    Int      @default(0)
+  newPropertyTarget Int      @default(0)
+  viewingTarget     Int      @default(0)
+  closingRateTarget Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("kpi_targets")
 }
