@@ -19,6 +19,17 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,6 +45,9 @@ import {
   Share2,
   Pencil,
   UserPlus,
+  FileImage,
+  X,
+  Plus,
   GitFork,
   Building2,
   Home,
@@ -64,6 +78,8 @@ import {
   Save,
   Loader2,
   Check,
+  Trash2,
+  Link,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -77,6 +93,7 @@ import {
   formatDate,
   formatDateRelative,
   getHeatColor,
+  getHeatLabel,
 } from '@/lib/format'
 
 interface PriceHistoryEntry {
@@ -307,6 +324,7 @@ export function PropertyDetailPage() {
               Chia sẻ
             </Button>
             <EditPropertyDialog property={property} />
+            <DeletePropertyDialog property={property} />
             <LinkCustomerDialog property={property} />
             <CreateDealDialog property={property} />
           </div>
@@ -324,7 +342,7 @@ export function PropertyDetailPage() {
               {imageUrls.length > 1 && (
                 <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
-                    variant="black"
+                    variant="ghost"
                     size="icon"
                     className="size-10 rounded-full bg-black/40 hover:bg-black/60 border-0"
                     onClick={() => setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : imageUrls.length - 1))}
@@ -332,7 +350,7 @@ export function PropertyDetailPage() {
                     <ChevronLeft className="size-6 text-white" />
                   </Button>
                   <Button
-                    variant="black"
+                    variant="ghost"
                     size="icon"
                     className="size-10 rounded-full bg-black/40 hover:bg-black/60 border-0"
                     onClick={() => setActiveImageIndex((prev) => (prev < imageUrls.length - 1 ? prev + 1 : 0))}
@@ -668,7 +686,7 @@ export function PropertyDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 4: Documents */}
+        {/* Tab 5: Documents */}
         <TabsContent value="docs" className="mt-4">
           <Card>
             <CardHeader className="pb-3">
@@ -717,7 +735,7 @@ export function PropertyDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 5: Price History */}
+        {/* Tab 6: Price History */}
         <TabsContent value="price-history" className="mt-4">
           <Card>
             <CardHeader className="pb-3">
@@ -795,6 +813,7 @@ export function PropertyDetailPage() {
     </div>
   )
 }
+
 function PotentialCustomersTab({ projectTitle }: { projectTitle: string }) {
   const { navigate } = useAppStore()
   const { data, isLoading } = useQuery({
@@ -862,6 +881,13 @@ function PotentialCustomersTab({ projectTitle }: { projectTitle: string }) {
 function EditPropertyDialog({ property }: { property: PropertyDetail }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [images, setImages] = useState<string[]>(() => {
+    try {
+      return property.images ? JSON.parse(property.images) : []
+    } catch (e) {
+      return []
+    }
+  })
   const [formData, setFormData] = useState({
     title: property.title,
     price: property.price.toString(),
@@ -882,12 +908,26 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
   })
   const queryClient = useQueryClient()
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64String = reader.result as string
+          setImages(prev => [...prev, base64String])
+        }
+        reader.readAsDataURL(file)
+      })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
       const res = await fetch(`/api/properties/${property.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -896,6 +936,7 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
           useArea: parseFloat(formData.useArea) || null,
           bedrooms: parseInt(formData.bedrooms) || null,
           bathrooms: parseInt(formData.bathrooms) || null,
+          images: JSON.stringify(images),
         }),
       })
       if (!res.ok) throw new Error('Failed')
@@ -918,7 +959,7 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
           Sửa
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Chỉnh sửa tài sản</DialogTitle>
           <DialogDescription>Cập nhật thông tin chi tiết cho {property.code}</DialogDescription>
@@ -932,6 +973,33 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
               required 
             />
           </div>
+
+          <div className="space-y-2">
+            <Label className="text-blue-600 font-semibold flex items-center gap-1.5">
+              <FileImage className="size-4" />
+              Hình ảnh sản phẩm
+            </Label>
+            <div className="grid grid-cols-4 gap-2">
+              {images.map((img, i) => (
+                <div key={i} className="aspect-square rounded-md overflow-hidden border relative group">
+                  <img src={img} alt="Property" className="size-full object-cover" />
+                  <button 
+                    type="button"
+                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setImages(images.filter((_, idx) => idx !== i))}
+                  >
+                    <X className="size-4 text-white" />
+                  </button>
+                </div>
+              ))}
+              <label className="aspect-square rounded-md border-2 border-dashed border-blue-200 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors">
+                <Plus className="size-6 text-blue-400" />
+                <span className="text-[10px] text-blue-500 font-medium mt-1">Tải ảnh</span>
+                <input type="file" className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
+              </label>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Giá (VND)</Label>
@@ -1110,6 +1178,8 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
       </DialogContent>
     </Dialog>
   )
+}
+
 function LinkOwnerDialog({ property }: { property: PropertyDetail }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -1156,7 +1226,7 @@ function LinkOwnerDialog({ property }: { property: PropertyDetail }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="mt-3 gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
           <UserPlus className="size-3.5" />
           Gắn chủ nhà
         </Button>
@@ -1214,8 +1284,6 @@ function LinkOwnerDialog({ property }: { property: PropertyDetail }) {
       </DialogContent>
     </Dialog>
   )
-}
-
 }
 
 function CreateDealDialog({ property }: { property: PropertyDetail }) {
@@ -1443,5 +1511,60 @@ function LinkCustomerDialog({ property }: { property: PropertyDetail }) {
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function DeletePropertyDialog({ property }: { property: PropertyDetail }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const { navigate } = useAppStore()
+  const queryClient = useQueryClient()
+
+  const handleDelete = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/properties/${property.id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed')
+      toast.success('Đã xóa tài sản thành công!')
+      queryClient.invalidateQueries({ queryKey: ['properties'] })
+      navigate('properties')
+    } catch {
+      toast.error('Không thể xóa tài sản')
+    } finally {
+      setLoading(false)
+      setOpen(false)
+    }
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50">
+          <Trash2 className="size-3.5" />
+          Xóa
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Bạn có chắc chắn muốn xóa?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Hành động này không thể hoàn tác. Tài sản {property.code} sẽ bị xóa vĩnh viễn khỏi hệ thống.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>Hủy</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleDelete} 
+            disabled={loading}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {loading ? <Loader2 className="size-4 animate-spin mr-2" /> : <Trash2 className="size-4 mr-2" />}
+            Xác nhận xóa
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

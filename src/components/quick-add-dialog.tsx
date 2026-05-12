@@ -358,12 +358,16 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // In a real app, you'd upload to S3/Cloudinary and get a URL
-      // For now, we'll use a local blob URL or a placeholder
-      const url = URL.createObjectURL(file)
-      setImages([...images, url])
+    const files = e.target.files
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const base64String = reader.result as string
+          setImages(prev => [...prev, base64String])
+        }
+        reader.readAsDataURL(file)
+      })
     }
   }
 
