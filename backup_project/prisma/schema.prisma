@@ -1,0 +1,322 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+
+}
+
+model User {
+  id         String     @id @default(cuid())
+  email      String     @unique
+  name       String
+  phone      String?
+  password   String
+  avatar     String?
+  role       String     @default("sales")
+  active     Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  customers  Customer[]
+  deals      Deal[]
+  properties Property[]
+  tasks      Task[]
+}
+
+model Customer {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  name          String
+  phone         String
+  email         String?
+  zalo          String?
+  whatsapp      String?
+  nationality   String         @default("Việt Nam")
+  language      String         @default("Tiếng Việt")
+  type          String         @default("buy")
+  demand        String         @default("buy")
+  propertyType  String?
+  areaInterest  String?
+  budget        String?
+  timeframe     String?
+  heatLevel     String         @default("warm")
+  source        String?
+  assignedTo    String?
+  notes         String?
+  lastContact   DateTime?
+  nextFollowUp  DateTime?
+  status        String         @default("new")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User?          @relation(fields: [assignedTo], references: [id])
+  dealCustomers DealCustomer[]
+  interactions  Interaction[]
+  propertyViews PropertyView[]
+  taskCustomers TaskCustomer[]
+
+  @@map("customers")
+}
+
+model Interaction {
+  id         String   @id @default(cuid())
+  customerId String
+  type       String
+  content    String
+  date       DateTime @default(now())
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("interactions")
+}
+
+model Owner {
+  id               String      @id @default(cuid())
+  code             String      @unique
+  name             String
+  phone            String
+  contactChannel   String?
+  area             String?
+  cooperationLevel String      @default("B")
+  trustLevel       String      @default("medium")
+  commissionPolicy String?
+  notes            String?
+  lastContact      DateTime?
+  nextUpdate       DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  properties       Property[]
+  ownerTasks       TaskOwner[]
+
+  @@map("owners")
+}
+
+model Property {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  title          String
+  propertyType   String         @default("apartment")
+  demand         String         @default("sell")
+  area           String?
+  address        String?
+  project        String?
+  landArea       Float?
+  useArea        Float?
+  bedrooms       Int?
+  bathrooms      Int?
+  furniture      String?
+  direction      String?
+  price          Float
+  expectedPrice  Float?
+  legalStatus    String?
+  planningStatus String?
+  images         String?
+  videos         String?
+  ownerId        String?
+  status         String         @default("new")
+  attractiveness String         @default("medium")
+  easyToClose    String         @default("medium")
+  isHot          Boolean        @default(false)
+  isExclusive    Boolean        @default(false)
+  lastUpdated    DateTime       @default(now())
+  description    String?
+  assignedTo     String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  dealProperties DealProperty[]
+  priceHistory   PriceHistory[]
+  user           User?          @relation(fields: [assignedTo], references: [id])
+  owner          Owner?         @relation(fields: [ownerId], references: [id])
+  propertyDocs   PropertyDoc[]
+  propertyViews  PropertyView[]
+
+  @@map("properties")
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  propertyId String
+  price      Float
+  note       String?
+  date       DateTime @default(now())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("price_history")
+}
+
+model PropertyView {
+  id         String   @id @default(cuid())
+  propertyId String
+  customerId String
+  feedback   String?
+  date       DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_views")
+}
+
+model Deal {
+  id                 String         @id @default(cuid())
+  code               String         @unique
+  type               String         @default("sell")
+  value              Float?
+  expectedCommission Float?
+  actualCommission   Float?
+  stage              String         @default("new_lead")
+  expectedCloseDate  DateTime?
+  risk               String?
+  nextStep           String?
+  assignedTo         String?
+  notes              String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  dealCustomers      DealCustomer[]
+  dealDocs           DealDoc[]
+  dealProperties     DealProperty[]
+  user               User?          @relation(fields: [assignedTo], references: [id])
+  dealTasks          TaskDeal[]
+
+  @@map("deals")
+}
+
+model DealCustomer {
+  id         String   @id @default(cuid())
+  dealId     String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, customerId])
+  @@map("deal_customers")
+}
+
+model DealProperty {
+  id         String   @id @default(cuid())
+  dealId     String
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  deal       Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@unique([dealId, propertyId])
+  @@map("deal_properties")
+}
+
+model Task {
+  id            String         @id @default(cuid())
+  title         String
+  type          String         @default("call")
+  priority      String         @default("medium")
+  status        String         @default("pending")
+  dueDate       DateTime
+  dueTime       String?
+  description   String?
+  isRecurring   Boolean        @default(false)
+  recurPattern  String?
+  assignedTo    String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  taskCustomers TaskCustomer[]
+  taskDeals     TaskDeal[]
+  taskOwners    TaskOwner[]
+  user          User           @relation(fields: [assignedTo], references: [id])
+
+  @@map("tasks")
+}
+
+model TaskCustomer {
+  id         String   @id @default(cuid())
+  taskId     String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, customerId])
+  @@map("task_customers")
+}
+
+model TaskOwner {
+  id      String @id @default(cuid())
+  taskId  String
+  ownerId String
+  owner   Owner  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  task    Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, ownerId])
+  @@map("task_owners")
+}
+
+model TaskDeal {
+  id     String @id @default(cuid())
+  taskId String
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dealId])
+  @@map("task_deals")
+}
+
+model Campaign {
+  id                String    @id @default(cuid())
+  name              String
+  channel           String
+  postDate          DateTime?
+  content           String?
+  propertyId        String?
+  cost              Float     @default(0)
+  leadsGenerated    Int       @default(0)
+  viewingsGenerated Int       @default(0)
+  dealsGenerated    Int       @default(0)
+  revenue           Float     @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("campaigns")
+}
+
+model PropertyDoc {
+  id         String   @id @default(cuid())
+  name       String
+  type       String
+  fileUrl    String
+  propertyId String
+  status     String   @default("sufficient")
+  createdAt  DateTime @default(now())
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_docs")
+}
+
+model DealDoc {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  fileUrl   String
+  dealId    String
+  status    String   @default("sufficient")
+  createdAt DateTime @default(now())
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("deal_docs")
+}
+
+model KPITarget {
+  id                String   @id @default(cuid())
+  userId            String
+  period            String
+  revenueTarget     Float    @default(0)
+  dealRentTarget    Int      @default(0)
+  dealSellTarget    Int      @default(0)
+  newCustomerTarget Int      @default(0)
+  newOwnerTarget    Int      @default(0)
+  newPropertyTarget Int      @default(0)
+  viewingTarget     Int      @default(0)
+  closingRateTarget Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("kpi_targets")
+}
