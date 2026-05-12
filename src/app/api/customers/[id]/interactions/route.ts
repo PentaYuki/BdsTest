@@ -53,7 +53,7 @@ export async function POST(
       data: {
         customerId: id,
         type: body.type,
-        content: body.content,
+        content: body.content || body.note || '',
         date: body.date ? new Date(body.date) : new Date(),
       },
     });

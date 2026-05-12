@@ -343,9 +343,14 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
   const [price, setPrice] = useState('')
   const [demand, setDemand] = useState('')
   const [area, setArea] = useState('')
+  const [landArea, setLandArea] = useState('')
+  const [useArea, setUseArea] = useState('')
   const [address, setAddress] = useState('')
   const [bedrooms, setBedrooms] = useState('')
   const [bathrooms, setBathrooms] = useState('')
+  const [furniture, setFurniture] = useState('')
+  const [direction, setDirection] = useState('')
+  const [legalStatus, setLegalStatus] = useState('')
   const [images, setImages] = useState<string[]>([])
   const [attractiveness, setAttractiveness] = useState('medium')
   const [easyToClose, setEasyToClose] = useState('medium')
@@ -376,6 +381,14 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
           demand: demand || 'sell',
           price: parseFloat(price) || 0,
           area,
+          landArea: parseFloat(landArea) || null,
+          useArea: parseFloat(useArea) || null,
+          address,
+          bedrooms: parseInt(bedrooms) || null,
+          bathrooms: parseInt(bathrooms) || null,
+          furniture,
+          direction,
+          legalStatus,
           attractiveness,
           easyToClose,
           images: JSON.stringify(images),
@@ -461,6 +474,29 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
+          <Label htmlFor="property-land-area">DT Đất (m²)</Label>
+          <Input
+            id="property-land-area"
+            type="number"
+            placeholder="100"
+            value={landArea}
+            onChange={(e) => setLandArea(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="property-use-area">DT Sử dụng (m²)</Label>
+          <Input
+            id="property-use-area"
+            type="number"
+            placeholder="150"
+            value={useArea}
+            onChange={(e) => setUseArea(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
           <Label htmlFor="property-price">Giá (VND)</Label>
           <Input
             id="property-price"
@@ -516,6 +552,54 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
             onChange={(e) => setBathrooms(e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="property-furniture">Nội thất</Label>
+          <Select value={furniture} onValueChange={setFurniture}>
+            <SelectTrigger id="property-furniture">
+              <SelectValue placeholder="Chọn" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="full">Đầy đủ</SelectItem>
+              <SelectItem value="basic">Cơ bản</SelectItem>
+              <SelectItem value="none">Trống</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="property-direction">Hướng</Label>
+          <Select value={direction} onValueChange={setDirection}>
+            <SelectTrigger id="property-direction">
+              <SelectValue placeholder="Chọn hướng" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Đông">Đông</SelectItem>
+              <SelectItem value="Tây">Tây</SelectItem>
+              <SelectItem value="Nam">Nam</SelectItem>
+              <SelectItem value="Bắc">Bắc</SelectItem>
+              <SelectItem value="Đông Nam">Đông Nam</SelectItem>
+              <SelectItem value="Đông Bắc">Đông Bắc</SelectItem>
+              <SelectItem value="Tây Nam">Tây Nam</SelectItem>
+              <SelectItem value="Tây Bắc">Tây Bắc</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="property-legal">Pháp lý</Label>
+        <Select value={legalStatus} onValueChange={setLegalStatus}>
+          <SelectTrigger id="property-legal">
+            <SelectValue placeholder="Tình trạng pháp lý" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Sổ hồng">Sổ hồng</SelectItem>
+            <SelectItem value="Hợp đồng mua bán">Hợp đồng mua bán</SelectItem>
+            <SelectItem value="Đang chờ sổ">Đang chờ sổ</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

@@ -188,6 +188,8 @@ const statusColors: Record<string, string> = {
   rented: 'bg-purple-100 text-purple-700',
   pending: 'bg-amber-100 text-amber-700',
   inactive: 'bg-slate-100 text-slate-700',
+  coming_soon: 'bg-red-50 text-red-500 border-red-100',
+  on_sale: 'bg-emerald-50 text-emerald-600 border-emerald-100',
 }
 
 export function getStatusColor(status: string): string {
@@ -204,6 +206,8 @@ const statusLabels: Record<string, string> = {
   rented: 'Đã thuê',
   pending: 'Chờ xử lý',
   inactive: 'Không hoạt động',
+  coming_soon: 'Sắp mở bán',
+  on_sale: 'Đang mở bán',
 }
 
 export function getStatusLabel(status: string): string {

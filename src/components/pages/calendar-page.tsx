@@ -201,6 +201,13 @@ export function CalendarPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskType, setNewTaskType] = useState('call_customer')
+  const [newTaskPriority, setNewTaskPriority] = useState('medium')
+  const [newTaskDate, setNewTaskDate] = useState(new Date().toISOString().slice(0, 10))
+  const [newTaskTime, setNewTaskTime] = useState('09:00')
+  const [newTaskNote, setNewTaskNote] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch tasks
   const { data: tasks = mockTasks, isLoading } = useQuery<Task[]>({
@@ -249,7 +256,7 @@ export function CalendarPage() {
         })
       } catch (error) {
         console.error('Error fetching tasks:', error)
-        return mockTasks
+        return []
       }
     },
   })
@@ -276,19 +283,24 @@ export function CalendarPage() {
   })
 
   // Filter tasks by view mode
-  const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
+  const viewDateStr = viewDate.toISOString().slice(0, 10)
+  const viewMonthStr = viewDate.toISOString().slice(0, 7)
+  
   const filteredTasks = tasks.filter(task => {
-    if (viewMode === 'today') return task.dueDate === todayStr
+    if (viewMode === 'today') return task.dueDate === viewDateStr
     if (viewMode === 'week') {
-      const weekStart = new Date(now)
-      weekStart.setDate(now.getDate() - now.getDay())
+      const weekStart = new Date(viewDate)
+      weekStart.setDate(viewDate.getDate() - viewDate.getDay())
       const weekEnd = new Date(weekStart)
       weekEnd.setDate(weekStart.getDate() + 6)
       const d = new Date(task.dueDate)
-      return d >= weekStart && d <= weekEnd
+      // Normalize dates for comparison
+      const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const sDate = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate())
+      const eDate = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate())
+      return dDate >= sDate && dDate <= eDate
     }
-    return task.dueDate.slice(0, 7) === todayStr.slice(0, 7)
+    return task.dueDate.slice(0, 7) === viewMonthStr
   })
 
   // Group by date
@@ -444,20 +456,54 @@ export function CalendarPage() {
             <DialogDescription>Tạo công việc mới vào lịch</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault()
-              setShowAddDialog(false)
+              if (!newTaskTitle.trim()) return
+              setIsSubmitting(true)
+              try {
+                const res = await fetch('/api/tasks', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    title: newTaskTitle,
+                    type: newTaskType,
+                    priority: newTaskPriority,
+                    dueDate: newTaskDate,
+                    dueTime: newTaskTime,
+                    description: newTaskNote,
+                    assignedTo: 'admin-user-id', // Default to admin for now
+                  }),
+                })
+                if (!res.ok) throw new Error('Failed to create task')
+                
+                // Clear form
+                setNewTaskTitle('')
+                setNewTaskNote('')
+                
+                // Refresh and close
+                queryClient.invalidateQueries({ queryKey: ['tasks'] })
+                setShowAddDialog(false)
+              } catch (error) {
+                console.error('Create task error:', error)
+              } finally {
+                setIsSubmitting(false)
+              }
             }}
             className="space-y-4"
           >
             <div className="space-y-2">
               <Label>Tiêu đề *</Label>
-              <Input placeholder="Gọi khách hàng..." />
+              <Input 
+                placeholder="Gọi khách hàng..." 
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Loại việc</Label>
-                <Select defaultValue="call_customer">
+                <Select value={newTaskType} onValueChange={setNewTaskType}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -475,7 +521,7 @@ export function CalendarPage() {
               </div>
               <div className="space-y-2">
                 <Label>Ưu tiên</Label>
-                <Select defaultValue="medium">
+                <Select value={newTaskPriority} onValueChange={setNewTaskPriority}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -490,23 +536,36 @@ export function CalendarPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Ngày</Label>
-                <Input type="date" defaultValue={todayStr} />
+                <Input 
+                  type="date" 
+                  value={newTaskDate}
+                  onChange={(e) => setNewTaskDate(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Giờ</Label>
-                <Input type="time" defaultValue="09:00" />
+                <Input 
+                  type="time" 
+                  value={newTaskTime}
+                  onChange={(e) => setNewTaskTime(e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Ghi chú</Label>
-              <Textarea placeholder="Chi tiết công việc..." rows={2} />
+              <Textarea 
+                placeholder="Chi tiết công việc..." 
+                rows={2} 
+                value={newTaskNote}
+                onChange={(e) => setNewTaskNote(e.target.value)}
+              />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
                 Hủy
               </Button>
-              <Button type="submit" className="bg-blue-500 hover:bg-blue-600">
-                Tạo task
+              <Button type="submit" className="bg-blue-500 hover:bg-blue-600" disabled={isSubmitting}>
+                {isSubmitting ? 'Đang tạo...' : 'Tạo task'}
               </Button>
             </DialogFooter>
           </form>

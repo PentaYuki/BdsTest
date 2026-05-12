@@ -604,10 +604,7 @@ export function PropertyDetailPage() {
               <CardContent className="p-8 text-center">
                 <User className="size-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">Chưa gắn chủ nhà cho tài sản này</p>
-                <Button variant="outline" size="sm" className="mt-3 gap-1.5">
-                  <UserPlus className="size-3.5" />
-                  Gắn chủ nhà
-                </Button>
+                <LinkOwnerDialog property={property} />
               </CardContent>
             </Card>
           )}
@@ -872,6 +869,16 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
     description: property.description || '',
     attractiveness: property.attractiveness,
     easyToClose: property.easyToClose,
+    project: property.project || '',
+    address: property.address || '',
+    area: property.area || '',
+    landArea: property.landArea?.toString() || '',
+    useArea: property.useArea?.toString() || '',
+    bedrooms: property.bedrooms?.toString() || '',
+    bathrooms: property.bathrooms?.toString() || '',
+    furniture: property.furniture || '',
+    direction: property.direction || '',
+    legalStatus: property.legalStatus || '',
   })
   const queryClient = useQueryClient()
 
@@ -885,6 +892,10 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
         body: JSON.stringify({
           ...formData,
           price: parseFloat(formData.price),
+          landArea: parseFloat(formData.landArea) || null,
+          useArea: parseFloat(formData.useArea) || null,
+          bedrooms: parseInt(formData.bedrooms) || null,
+          bathrooms: parseInt(formData.bathrooms) || null,
         }),
       })
       if (!res.ok) throw new Error('Failed')
@@ -937,13 +948,120 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="available">Đang trống</SelectItem>
-                  <SelectItem value="deposit">Đã cọc</SelectItem>
-                  <SelectItem value="sold">Đã bán/thuê</SelectItem>
-                  <SelectItem value="stop_business">Ngừng doanh nghiệp</SelectItem>
+                  <SelectItem value="new">Mới</SelectItem>
+                  <SelectItem value="active">Đang bán</SelectItem>
+                  <SelectItem value="deposited">Đã cọc</SelectItem>
+                  <SelectItem value="sold">Đã bán</SelectItem>
+                  <SelectItem value="rented">Đã thuê</SelectItem>
+                  <SelectItem value="paused">Tạm dừng</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Dự án</Label>
+              <Input 
+                value={formData.project} 
+                onChange={e => setFormData({...formData, project: e.target.value})} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Khu vực</Label>
+              <Input 
+                value={formData.area} 
+                onChange={e => setFormData({...formData, area: e.target.value})} 
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Địa chỉ chi tiết</Label>
+            <Input 
+              value={formData.address} 
+              onChange={e => setFormData({...formData, address: e.target.value})} 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>DT Đất (m²)</Label>
+              <Input 
+                type="number" 
+                value={formData.landArea} 
+                onChange={e => setFormData({...formData, landArea: e.target.value})} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>DT Sử dụng (m²)</Label>
+              <Input 
+                type="number" 
+                value={formData.useArea} 
+                onChange={e => setFormData({...formData, useArea: e.target.value})} 
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Phòng ngủ</Label>
+              <Input 
+                type="number" 
+                value={formData.bedrooms} 
+                onChange={e => setFormData({...formData, bedrooms: e.target.value})} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phòng tắm</Label>
+              <Input 
+                type="number" 
+                value={formData.bathrooms} 
+                onChange={e => setFormData({...formData, bathrooms: e.target.value})} 
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Nội thất</Label>
+              <Select value={formData.furniture} onValueChange={v => setFormData({...formData, furniture: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Đầy đủ</SelectItem>
+                  <SelectItem value="basic">Cơ bản</SelectItem>
+                  <SelectItem value="none">Trống</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Hướng</Label>
+              <Select value={formData.direction} onValueChange={v => setFormData({...formData, direction: v})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Đông">Đông</SelectItem>
+                  <SelectItem value="Tây">Tây</SelectItem>
+                  <SelectItem value="Nam">Nam</SelectItem>
+                  <SelectItem value="Bắc">Bắc</SelectItem>
+                  <SelectItem value="Đông Nam">Đông Nam</SelectItem>
+                  <SelectItem value="Đông Bắc">Đông Bắc</SelectItem>
+                  <SelectItem value="Tây Nam">Tây Nam</SelectItem>
+                  <SelectItem value="Tây Bắc">Tây Bắc</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Pháp lý</Label>
+            <Select value={formData.legalStatus} onValueChange={v => setFormData({...formData, legalStatus: v})}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Sổ hồng">Sổ hồng</SelectItem>
+                <SelectItem value="Hợp đồng mua bán">Hợp đồng mua bán</SelectItem>
+                <SelectItem value="Đang chờ sổ">Đang chờ sổ</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -992,6 +1110,112 @@ function EditPropertyDialog({ property }: { property: PropertyDetail }) {
       </DialogContent>
     </Dialog>
   )
+function LinkOwnerDialog({ property }: { property: PropertyDetail }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [ownerSearch, setOwnerSearch] = useState('')
+  const [selectedOwnerId, setSelectedOwnerId] = useState('')
+  
+  const queryClient = useQueryClient()
+
+  const { data: owners = [] } = useQuery({
+    queryKey: ['owners-search', ownerSearch],
+    queryFn: async () => {
+      if (!ownerSearch) return []
+      const res = await fetch(`/api/owners?search=${ownerSearch}&limit=5`)
+      const json = await res.json()
+      return json.data || []
+    },
+    enabled: ownerSearch.length > 1
+  })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedOwnerId) {
+      toast.error('Vui lòng chọn chủ nhà')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/properties/${property.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerId: selectedOwnerId }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      toast.success('Đã gắn chủ nhà thành công!')
+      queryClient.invalidateQueries({ queryKey: ['property-detail', property.id] })
+      setOpen(false)
+    } catch {
+      toast.error('Không thể gắn chủ nhà')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="mt-3 gap-1.5">
+          <UserPlus className="size-3.5" />
+          Gắn chủ nhà
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Gắn chủ nhà</DialogTitle>
+          <DialogDescription>Tìm và chọn chủ nhà cho tài sản {property.code}</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Tìm kiếm chủ nhà</Label>
+            <Input 
+              placeholder="Tên, SĐT hoặc mã chủ nhà..." 
+              value={ownerSearch}
+              onChange={(e) => setOwnerSearch(e.target.value)}
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Kết quả tìm kiếm</Label>
+            <ScrollArea className="h-[200px] rounded-md border p-2">
+              <div className="space-y-1">
+                {owners.length > 0 ? (
+                  owners.map((o: any) => (
+                    <div
+                      key={o.id}
+                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${selectedOwnerId === o.id ? 'bg-amber-50 border border-amber-200' : 'hover:bg-slate-50'}`}
+                      onClick={() => setSelectedOwnerId(o.id)}
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{o.name}</p>
+                        <p className="text-xs text-muted-foreground">{o.phone} · {o.code}</p>
+                      </div>
+                      {selectedOwnerId === o.id && <Check className="size-4 text-amber-500" />}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-center text-muted-foreground py-8">
+                    {ownerSearch.length > 1 ? 'Không tìm thấy chủ nhà' : 'Nhập ít nhất 2 ký tự để tìm'}
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Hủy</Button>
+            <Button type="submit" disabled={loading || !selectedOwnerId} className="bg-amber-500 hover:bg-amber-600">
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <Link className="size-4 mr-1.5" />}
+              Gắn chủ nhà
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 }
 
 function CreateDealDialog({ property }: { property: PropertyDetail }) {
@@ -1136,12 +1360,21 @@ function LinkCustomerDialog({ property }: { property: PropertyDetail }) {
     if (!selectedCustomerId) return
     setLoading(true)
     try {
+      await fetch(`/api/properties/${property.id}/views`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: selectedCustomerId,
+          feedback: 'Gắn khách từ chi tiết tài sản',
+        }),
+      });
+
       await fetch(`/api/customers/${selectedCustomerId}/interactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'note',
-          note: `Khách quan tâm đến tài sản: ${property.code} - ${property.title}`,
+          content: `Khách quan tâm đến tài sản: ${property.code} - ${property.title}`,
         }),
       })
       toast.success('Đã gắn khách hàng vào tài sản!')

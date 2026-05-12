@@ -54,6 +54,7 @@ interface Property {
   isHot: boolean
   lastUpdated: string
   createdAt: string
+  images: string | null
   owner?: { id: string; name: string; code: string; phone: string; cooperationLevel: string } | null
 }
 
@@ -103,141 +104,71 @@ function PropertyCard({ property }: { property: Property }) {
 
   return (
     <Card
-      className="group cursor-pointer overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5"
+      className="group cursor-pointer overflow-hidden border-none shadow-none bg-white transition-all hover:shadow-md"
       onClick={() => navigate('property-detail', property.id)}
     >
       {/* Thumbnail */}
-      <div className={`relative h-44 flex items-center justify-center overflow-hidden bg-slate-100`}>
+      <div className="relative h-56 rounded-xl overflow-hidden bg-slate-100">
         {hasImage ? (
           <img
             src={imageUrls[0]}
             alt={property.title}
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
           />
         ) : (
-          <div className={`size-full bg-gradient-to-br ${getPropertyGradient(property.propertyType)} flex items-center justify-center`}>
+          <div className={`size-full bg-gradient-to-br ${getPropertyGradient(property.propertyType)} flex items-center justify-center opacity-80`}>
             <PropertyTypeIcon type={property.propertyType} />
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-        {/* Property code badge */}
-        <Badge className="absolute top-2 left-2 bg-white/90 text-slate-700 text-[10px] font-semibold hover:bg-white/90 shadow-sm">
-          {property.code}
-        </Badge>
-
-        {/* Hot badge */}
-        {property.isHot && (
-          <Badge className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-semibold hover:bg-red-500 gap-1">
-            <Flame className="size-3" />
-            Hàng nóng
-          </Badge>
-        )}
-
-        {/* Demand badge */}
-        <Badge
-          className={`absolute bottom-2 right-2 text-[10px] font-semibold ${
-            property.demand === 'rent'
-              ? 'bg-blue-500 text-white hover:bg-blue-500'
-              : 'bg-amber-500 text-white hover:bg-amber-500'
-          }`}
-        >
-          {getDemandLabel(property.demand)}
-        </Badge>
-      </div>
-
-      <CardContent className="p-4 space-y-2.5">
-        {/* Title */}
-        <h3 className="font-semibold text-sm text-slate-800 line-clamp-2 leading-snug">
-          {property.title}
-        </h3>
-
-        {/* Price */}
-        <p className="text-lg font-bold text-amber-600">
-          {formatCurrency(property.price)}
-        </p>
-
-        {/* Info row */}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {(property.useArea || property.landArea) && (
-            <span className="flex items-center gap-1">
-              <Maximize className="size-3" />
-              {property.useArea || property.landArea} m²
-            </span>
-          )}
-          {property.bedrooms && (
-            <span className="flex items-center gap-1">
-              <Bed className="size-3" />
-              {property.bedrooms}
-            </span>
-          )}
-          {property.bathrooms && (
-            <span className="flex items-center gap-1">
-              <Bath className="size-3" />
-              {property.bathrooms}
-            </span>
-          )}
-        </div>
-
-        {/* Location */}
-        {property.area && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <MapPin className="size-3 shrink-0" />
-            <span className="truncate">{property.area}</span>
+        {/* Image count badge */}
+        {imageUrls.length > 0 && (
+          <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/50 backdrop-blur-sm text-white text-[10px] font-medium flex items-center gap-1">
+            <Maximize className="size-3" />
+            {imageUrls.length}
           </div>
         )}
 
-        {/* Status & Legal */}
-        <div className="flex items-center justify-between pt-1">
-          <Badge
-            variant="outline"
-            className={`text-[10px] ${statusColor.bg} ${statusColor.text} border-0`}
-          >
+        {/* Status badge - top left */}
+        <div className="absolute top-3 left-3">
+          <Badge className={`px-2.5 py-1 text-[10px] font-bold shadow-sm border-0 ${statusColor}`}>
             {getStatusLabel(property.status)}
           </Badge>
-          {property.legalStatus && (
-            <span className="text-[10px] text-muted-foreground">{property.legalStatus}</span>
+        </div>
+
+        {/* Property code badge - top right */}
+        <Badge className="absolute top-3 right-3 bg-white/90 text-slate-700 text-[9px] font-bold hover:bg-white/90 shadow-sm border-0">
+          {property.code}
+        </Badge>
+      </div>
+
+      <CardContent className="px-1 py-4 space-y-2">
+        {/* Title */}
+        <h3 className="font-bold text-[15px] text-slate-800 line-clamp-1 group-hover:text-amber-600 transition-colors">
+          {property.title}
+        </h3>
+
+        {/* Area Subtitle */}
+        <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
+          {property.useArea || property.landArea ? (
+            <>
+              {(property.useArea || property.landArea)?.toLocaleString('vi-VN')} {property.landArea && property.landArea > 1000 ? 'ha' : 'm²'}
+            </>
+          ) : (
+            <span className="text-slate-400 font-normal">Chưa cập nhật diện tích</span>
           )}
         </div>
 
-        {/* Last updated */}
-        <p className="text-[10px] text-muted-foreground">
-          Cập nhật {formatDateRelative(property.lastUpdated)}
-        </p>
-
-        {/* Quick actions */}
-        <div className="flex items-center gap-1 pt-1 border-t border-slate-100">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 flex-1 text-[11px] text-slate-500 hover:text-blue-600"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate('property-detail', property.id)
-            }}
-          >
-            <Eye className="size-3 mr-1" />
-            Xem chi tiết
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 flex-1 text-[11px] text-slate-500 hover:text-emerald-600"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <UserPlus className="size-3 mr-1" />
-            Gắn khách
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 flex-1 text-[11px] text-slate-500 hover:text-violet-600"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Share2 className="size-3 mr-1" />
-            Chia sẻ
-          </Button>
+        {/* Location Footer */}
+        {property.area && (
+          <div className="flex items-center gap-1 text-[13px] text-slate-500">
+            <span className="truncate">{property.area}</span>
+          </div>
+        )}
+        
+        {/* Price - Subtle */}
+        <div className="pt-1">
+          <span className="text-amber-600 font-bold text-sm">{formatCurrency(property.price)}</span>
         </div>
       </CardContent>
     </Card>
@@ -246,17 +177,12 @@ function PropertyCard({ property }: { property: Property }) {
 
 function PropertyCardSkeleton() {
   return (
-    <Card className="overflow-hidden">
-      <Skeleton className="h-40 w-full" />
-      <CardContent className="p-4 space-y-2.5">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-6 w-1/2" />
+    <Card className="overflow-hidden border-none shadow-none bg-white">
+      <Skeleton className="h-56 w-full rounded-xl" />
+      <CardContent className="px-1 py-4 space-y-2">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
         <Skeleton className="h-3 w-2/3" />
-        <Skeleton className="h-3 w-1/2" />
-        <div className="flex justify-between">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-3 w-20" />
-        </div>
       </CardContent>
     </Card>
   )
@@ -297,13 +223,13 @@ export function PropertiesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder="Tìm kiếm tài sản (mã, tiêu đề, địa chỉ)..."
-            className="pl-9 h-10"
+            className="pl-9 h-10 border-slate-200 focus:border-amber-500 rounded-lg"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Button
-          className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+          className="bg-amber-500 hover:bg-amber-600 text-white shrink-0 rounded-lg shadow-sm"
           onClick={() => setQuickAddOpen(true)}
         >
           <Plus className="size-4 mr-1.5" />
@@ -318,10 +244,10 @@ export function PropertiesPage() {
             <button
               key={tab.key}
               onClick={() => setActiveFilter(tab.key)}
-              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+              className={`inline-flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                 activeFilter === tab.key
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-100'
               }`}
             >
               {tab.label}
@@ -334,29 +260,29 @@ export function PropertiesPage() {
       {/* Results count */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {isLoading ? 'Đang tải...' : `${data?.total || 0} tài sản`}
+          {isLoading ? 'Đang tải...' : `${data?.total || 0} tài sản được tìm thấy`}
         </p>
       </div>
 
       {/* Property grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <PropertyCardSkeleton key={i} />
           ))}
         </div>
       ) : properties.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-50 mb-4">
-            <Warehouse className="size-8 text-amber-500" />
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex size-20 items-center justify-center rounded-3xl bg-amber-50 mb-4">
+            <Warehouse className="size-10 text-amber-500" />
           </div>
-          <h3 className="text-lg font-semibold text-slate-800 mb-1">Chưa có tài sản</h3>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">Chưa có tài sản nào</h3>
           <p className="text-sm text-muted-foreground max-w-sm">
             Không tìm thấy tài sản nào phù hợp. Thử thay đổi bộ lọc hoặc thêm tài sản mới.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
           {properties.map((property) => (
             <PropertyCard key={property.id} property={property} />
           ))}

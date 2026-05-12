@@ -291,7 +291,7 @@ function CustomerCard({ customer }: { customer: Customer }) {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     type: 'call',
-                    note: 'Cuộc gọi từ hệ thống CRM',
+                    content: 'Cuộc gọi từ hệ thống CRM',
                   }),
                 })
                 toast.success('Đã ghi nhận cuộc gọi!')
