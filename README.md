@@ -72,4 +72,8 @@ npm run dev
 Dự án được phát triển bởi **PentaYuki**. Mọi thắc mắc vui lòng liên hệ qua GitHub Issue.
 
 ---
+---
 ⭐ **Nếu bạn thấy dự án này hữu ích, hãy tặng nó 1 Star nhé!**
+
+---
+*Dự án đã được cấu hình sẵn sàng cho việc triển khai lên Vercel + PostgreSQL.*
