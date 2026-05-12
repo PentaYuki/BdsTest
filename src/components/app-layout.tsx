@@ -233,7 +233,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pageTitle = pageTitles[currentPage] || 'Tổng quan'
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-dvh w-full overflow-hidden bg-slate-50">
       {/* Desktop Sidebar */}
       {!isMobile && (
         <motion.aside
