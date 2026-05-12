@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Users, Building2, Warehouse, CalendarPlus, ArrowLeft, Loader2, Plus, FileImage, X } from 'lucide-react'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { toast } from 'sonner'
 
 type QuickAddType = 'menu' | 'customer' | 'owner' | 'property' | 'task'
@@ -157,34 +158,6 @@ function QuickCustomerForm({ onClose }: { onClose: () => void }) {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      <div className="space-y-2 pb-2">
-        <Label className="text-blue-600 font-semibold flex items-center gap-1.5">
-          <FileImage className="size-4" />
-          Ảnh chân dung / Tài liệu
-        </Label>
-        <div className="grid grid-cols-4 gap-2">
-          {images.map((img, i) => (
-            <div key={i} className="aspect-square rounded-md overflow-hidden border relative group">
-              <img src={img} alt="Customer" className="size-full object-cover" />
-              <button 
-                type="button"
-                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={() => setImages(images.filter((_, idx) => idx !== i))}
-              >
-                <X className="size-4 text-white" />
-              </button>
-            </div>
-          ))}
-          <label className="aspect-square rounded-md border-2 border-dashed border-blue-200 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors">
-            <Plus className="size-6 text-blue-400" />
-            <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) setImages([...images, URL.createObjectURL(file)])
-            }} />
-          </label>
-        </div>
       </div>
 
       <div className="space-y-2 pb-4">
@@ -354,6 +327,7 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
   const [images, setImages] = useState<string[]>([])
   const [attractiveness, setAttractiveness] = useState('medium')
   const [easyToClose, setEasyToClose] = useState('medium')
+  const [isCustomArea, setIsCustomArea] = useState(false)
   const [loading, setLoading] = useState(false)
   const queryClient = useQueryClient()
 
@@ -512,16 +486,51 @@ function QuickPropertyForm({ onClose }: { onClose: () => void }) {
         </div>
         <div className="space-y-2">
           <Label>Khu vực</Label>
-          <Select value={area} onValueChange={setArea}>
-            <SelectTrigger>
-              <SelectValue placeholder="Chọn khu vực" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Quận 7">Quận 7</SelectItem>
-              <SelectItem value="Nhà Bè">Nhà Bè</SelectItem>
-              <SelectItem value="Bình Chánh">Bình Chánh</SelectItem>
-            </SelectContent>
-          </Select>
+          {!isCustomArea ? (
+            <Select 
+              value={area} 
+              onValueChange={(val) => {
+                if (val === 'custom') {
+                  setIsCustomArea(true)
+                  setArea('')
+                } else {
+                  setArea(val)
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn khu vực" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Quận 7">Quận 7</SelectItem>
+                <SelectItem value="Nhà Bè">Nhà Bè</SelectItem>
+                <SelectItem value="Bình Chánh">Bình Chánh</SelectItem>
+                <SelectItem value="custom" className="text-blue-600 font-bold">+ Tự nhập mới...</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Nhập khu vực mới..." 
+                value={area} 
+                onChange={(e) => setArea(e.target.value)}
+                autoFocus
+                className="h-9"
+              />
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 shrink-0"
+                onClick={() => {
+                  setIsCustomArea(false)
+                  setArea('')
+                }}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -820,42 +829,44 @@ export function QuickAddDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-6">
-          {activeForm === 'menu' && (
-            <div className="grid grid-cols-2 gap-4">
-              {menuItems.map((item) => (
-                <button
-                  key={item.type}
-                  onClick={() => setActiveForm(item.type)}
-                  className={`group flex flex-col items-center gap-3 rounded-2xl border border-white bg-white/50 p-5 transition-all duration-300 hover:bg-white hover:shadow-2xl hover:shadow-slate-200 hover:-translate-y-1`}
-                >
-                  <div
-                    className={`flex size-14 items-center justify-center rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${item.color} text-white`}
+        <ScrollArea className="max-h-[80dvh]">
+          <div className="p-6">
+            {activeForm === 'menu' && (
+              <div className="grid grid-cols-2 gap-4">
+                {menuItems.map((item) => (
+                  <button
+                    key={item.type}
+                    onClick={() => setActiveForm(item.type)}
+                    className={`group flex flex-col items-center gap-3 rounded-2xl border border-white bg-white/50 p-5 transition-all duration-300 hover:bg-white hover:shadow-2xl hover:shadow-slate-200 hover:-translate-y-1`}
                   >
-                    <item.icon className="size-7" />
-                  </div>
-                  <div className="text-center">
-                    <span className="block text-sm font-bold text-slate-700">
-                      {item.label}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      Bấm để tạo mới
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+                    <div
+                      className={`flex size-14 items-center justify-center rounded-2xl shadow-lg transition-transform duration-300 group-hover:scale-110 ${item.color} text-white`}
+                    >
+                      <item.icon className="size-7" />
+                    </div>
+                    <div className="text-center">
+                      <span className="block text-sm font-bold text-slate-700">
+                        {item.label}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        Bấm để tạo mới
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {activeForm === 'customer' && (
-            <QuickCustomerForm onClose={handleClose} />
-          )}
-          {activeForm === 'owner' && <QuickOwnerForm onClose={handleClose} />}
-          {activeForm === 'property' && (
-            <QuickPropertyForm onClose={handleClose} />
-          )}
-          {activeForm === 'task' && <QuickTaskForm onClose={handleClose} />}
-        </div>
+            {activeForm === 'customer' && (
+              <QuickCustomerForm onClose={handleClose} />
+            )}
+            {activeForm === 'owner' && <QuickOwnerForm onClose={handleClose} />}
+            {activeForm === 'property' && (
+              <QuickPropertyForm onClose={handleClose} />
+            )}
+            {activeForm === 'task' && <QuickTaskForm onClose={handleClose} />}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )
