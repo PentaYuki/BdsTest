@@ -42,6 +42,7 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts'
+import { PriorityLoader } from '@/components/priority-loader'
 import {
   DollarSign,
   GitFork,
@@ -188,8 +189,14 @@ stageOrder.forEach((stage) => {
 
 /* ─── Fetch helpers ──────────────────────────────────── */
 
-async function fetchDashboard(): Promise<DashboardData> {
-  const res = await fetch('/api/dashboard')
+async function fetchEssential(): Promise<Partial<DashboardData>> {
+  const res = await fetch('/api/dashboard/essential')
+  const json = await res.json()
+  return json.data
+}
+
+async function fetchExtended(): Promise<Partial<DashboardData>> {
+  const res = await fetch('/api/dashboard/extended')
   const json = await res.json()
   return json.data
 }
@@ -834,110 +841,122 @@ function HotPropertiesSection() {
 /* ─── Main Dashboard Page ────────────────────────────── */
 
 export function DashboardPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: fetchDashboard,
+  const { navigate } = useAppStore()
+
+  // High Priority: Essential counts
+  const { data: essential, isLoading: isEssentialLoading, error: essentialError } = useQuery({
+    queryKey: ['dashboard-essential'],
+    queryFn: fetchEssential,
   })
 
-  if (error) {
+  // Lower Priority: Heavy data (charts, history)
+  const { data: extended, isLoading: isExtendedLoading } = useQuery({
+    queryKey: ['dashboard-extended'],
+    queryFn: fetchExtended,
+    enabled: !!essential, // Load only after essential is done
+  })
+
+  if (essentialError) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <AlertTriangle className="size-12 text-red-400 mb-4" />
         <h3 className="text-lg font-semibold text-slate-800 mb-2">
-          Không thể tải dữ liệu
+          Không thể tải dữ liệu cơ bản
         </h3>
         <p className="text-sm text-muted-foreground">
-          Vui lòng thử lại sau
+          Vui lòng kiểm tra kết nối mạng và thử lại sau
         </p>
       </div>
     )
   }
 
+  const revenue = essential?.revenue
+  const tasks = essential?.tasks
+  const customers = essential?.customers
+  const properties = essential?.properties
+  const followUpsNeeded = essential?.followUpsNeeded
+
+  const dealsExtended = extended?.deals
+  const monthlyRevenue = extended?.monthlyRevenue
+  const customersExtended = extended?.customers
+
   return (
     <div className="space-y-6">
-      {/* Row 1: KPI Cards */}
-      {isLoading ? (
-        <KPISkeleton />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            label="Doanh thu tháng"
-            value={data ? formatCurrency(data.revenue.totalCommission) : '0'}
-            change="+18%"
-            trend="up"
-            icon={DollarSign}
-            color="text-emerald-500"
-            bg="bg-emerald-50"
-          />
-          <KPICard
-            label="Giao dịch thành"
-            value={data ? String(data.deals.completed) : '0'}
-            change="+5%"
-            trend="up"
-            icon={GitFork}
-            color="text-blue-500"
-            bg="bg-blue-50"
-          />
-          <KPICard
-            label="Khách hàng mới"
-            value={data ? String(data.customers.newThisMonth) : '0'}
-            change="+12%"
-            trend="up"
-            icon={Users}
-            color="text-amber-500"
-            bg="bg-amber-50"
-          />
-          <KPICard
-            label="Sản phẩm mới"
-            value={data ? String(data.properties.newThisMonth) : '0'}
-            change="-3%"
-            trend="down"
-            icon={Warehouse}
-            color="text-purple-500"
-            bg="bg-purple-50"
-          />
-        </div>
-      )}
-
-      {/* Row 2: Pipeline + Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {isLoading ? (
-          <>
-            <ChartSkeleton />
-            <CardSkeleton />
-          </>
+      {/* ─── Priority 1: KPI Cards ──────────────────────────── */}
+      <PriorityLoader priority={1} fallback={<KPISkeleton />}>
+        {isEssentialLoading ? (
+          <KPISkeleton />
         ) : (
-          <>
-            <PipelineChart byStage={data?.deals.byStage || {}} />
-            <TasksTodayCard />
-          </>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KPICard
+              label="Doanh thu tháng này"
+              value={formatCurrency(revenue?.totalCommission || 0)}
+              change="12.5%"
+              trend="up"
+              icon={DollarSign}
+              color="text-emerald-500"
+              bg="bg-emerald-50"
+            />
+            <KPICard
+              label="Giao dịch mới"
+              value={(essential?.deals?.completed || 0).toString()}
+              change="4.2%"
+              trend="up"
+              icon={GitFork}
+              color="text-blue-500"
+              bg="bg-blue-50"
+            />
+            <KPICard
+              label="Khách hàng mới"
+              value={(customers?.newThisMonth || 0).toString()}
+              change="8.1%"
+              trend="up"
+              icon={Users}
+              color="text-indigo-500"
+              bg="bg-indigo-50"
+            />
+            <KPICard
+              label="Sản phẩm mới"
+              value={(properties?.newThisMonth || 0).toString()}
+              change="2.4%"
+              trend="down"
+              icon={Warehouse}
+              color="text-amber-500"
+              bg="bg-amber-50"
+            />
+          </div>
         )}
+      </PriorityLoader>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ─── Priority 2: Tasks & Follow-ups ─────────────────── */}
+        <PriorityLoader priority={2} fallback={<CardSkeleton />}>
+          <TasksTodayCard />
+        </PriorityLoader>
+        
+        <PriorityLoader priority={2} fallback={<CardSkeleton />}>
+          <FollowUpCustomersCard followUpsNeeded={followUpsNeeded || 0} />
+        </PriorityLoader>
       </div>
 
-      {/* Row 3: Follow-up Customers + Source Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {isLoading ? (
-          <>
-            <CardSkeleton />
-            <ChartSkeleton />
-          </>
-        ) : (
-          <>
-            <FollowUpCustomersCard followUpsNeeded={data?.followUpsNeeded || 0} />
-            <SourceChart bySource={data?.customers.bySource || []} />
-          </>
-        )}
+      {/* ─── Priority 3: Charts & Extended Data ─────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <PriorityLoader priority={3} fallback={<ChartSkeleton />}>
+          <PipelineChart byStage={dealsExtended?.byStage || {}} />
+        </PriorityLoader>
+        
+        <PriorityLoader priority={3} fallback={<ChartSkeleton />}>
+          <SourceChart bySource={customersExtended?.bySource || []} />
+        </PriorityLoader>
       </div>
 
-      {/* Row 4: Monthly Revenue */}
-      {isLoading ? (
-        <ChartSkeleton />
-      ) : (
-        <MonthlyRevenueChart monthlyRevenue={data?.monthlyRevenue || []} />
-      )}
+      <PriorityLoader priority={4} fallback={<ChartSkeleton />}>
+        <MonthlyRevenueChart monthlyRevenue={monthlyRevenue || []} />
+      </PriorityLoader>
 
-      {/* Row 5: Hot Properties */}
-      <HotPropertiesSection />
+      <PriorityLoader priority={5} fallback={<div className="h-64 bg-slate-50 rounded-xl animate-pulse" />}>
+        <HotPropertiesSection />
+      </PriorityLoader>
     </div>
   )
 }

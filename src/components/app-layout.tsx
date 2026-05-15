@@ -62,6 +62,17 @@ const pageTitles: Record<string, string> = {
   'deal-detail': 'Chi tiết giao dịch',
 }
 
+// Prefetch Map
+const prefetchMap: Partial<Record<NavPage, () => Promise<any>>> = {
+  dashboard: () => import('@/components/pages/dashboard-page'),
+  customers: () => import('@/components/pages/customers-page'),
+  properties: () => import('@/components/pages/properties-page'),
+  deals: () => import('@/components/pages/deals-page'),
+  calendar: () => import('@/components/pages/calendar-page'),
+  marketing: () => import('@/components/pages/marketing-page'),
+  reports: () => import('@/components/pages/reports-page'),
+}
+
 function SidebarNav({ onItemClick, isCollapsed }: { onItemClick?: () => void; isCollapsed: boolean }) {
   const { currentPage, navigate } = useAppStore()
 
@@ -75,6 +86,9 @@ function SidebarNav({ onItemClick, isCollapsed }: { onItemClick?: () => void; is
             onClick={() => {
               navigate(item.page)
               onItemClick?.()
+            }}
+            onMouseEnter={() => {
+              prefetchMap[item.page]?.()
             }}
             className={`nav-sidebar-item ${isActive ? 'active' : ''} ${isCollapsed ? 'justify-center !px-0' : ''}`}
             title={isCollapsed ? item.label : undefined}
@@ -200,6 +214,12 @@ function MobileBottomNav() {
             <button
               key={item.page}
               onClick={() => navigate(item.page)}
+              onMouseEnter={() => {
+                prefetchMap[item.page]?.()
+              }}
+              onTouchStart={() => {
+                prefetchMap[item.page]?.()
+              }}
               className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors min-w-[56px] ${
                 isActive
                   ? 'text-blue-500'
