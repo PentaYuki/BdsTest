@@ -57,6 +57,12 @@ model Customer {
   propertyViews PropertyView[]
   taskCustomers TaskCustomer[]
 
+  @@index([status, heatLevel])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@index([nextFollowUp])
+  @@index([demand])
+  @@index([source])
   @@map("customers")
 }
 
@@ -69,6 +75,8 @@ model Interaction {
   createdAt  DateTime @default(now())
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  @@index([customerId])
+  @@index([date])
   @@map("interactions")
 }
 
@@ -132,6 +140,12 @@ model Property {
   propertyDocs   PropertyDoc[]
   propertyViews  PropertyView[]
 
+  @@index([status, isHot])
+  @@index([propertyType, demand])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@index([area])
+  @@index([ownerId])
   @@map("properties")
 }
 
@@ -179,6 +193,10 @@ model Deal {
   user               User?          @relation(fields: [assignedTo], references: [id])
   dealTasks          TaskDeal[]
 
+  @@index([stage])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@index([updatedAt, stage])
   @@map("deals")
 }
 
@@ -223,6 +241,9 @@ model Task {
   taskOwners    TaskOwner[]
   user          User           @relation(fields: [assignedTo], references: [id])
 
+  @@index([dueDate, status])
+  @@index([assignedTo])
+  @@index([status])
   @@map("tasks")
 }
 

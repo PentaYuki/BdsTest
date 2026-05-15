@@ -44,7 +44,25 @@ export async function GET(request: NextRequest) {
     const [properties, total] = await Promise.all([
       db.property.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          propertyType: true,
+          demand: true,
+          area: true,
+          address: true,
+          landArea: true,
+          useArea: true,
+          bedrooms: true,
+          bathrooms: true,
+          price: true,
+          legalStatus: true,
+          status: true,
+          isHot: true,
+          lastUpdated: true,
+          createdAt: true,
+          images: true,
           owner: { select: { id: true, name: true, code: true, phone: true, cooperationLevel: true } },
           user: { select: { id: true, name: true, role: true } },
         },

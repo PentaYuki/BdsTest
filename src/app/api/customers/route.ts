@@ -37,7 +37,20 @@ export async function GET(request: NextRequest) {
     const [customers, total] = await Promise.all([
       db.customer.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          phone: true,
+          email: true,
+          demand: true,
+          areaInterest: true,
+          budget: true,
+          heatLevel: true,
+          status: true,
+          nextFollowUp: true,
+          source: true,
+          createdAt: true,
           user: { select: { id: true, name: true, role: true } },
         },
         orderBy: { createdAt: 'desc' },

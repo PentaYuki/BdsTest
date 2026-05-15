@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { QuickAddDialog } from '@/components/quick-add-dialog'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
   Users,
@@ -303,18 +303,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto scrollbar-content p-4 md:p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentPage}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className={isMobile ? 'pb-20' : ''}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div
+            key={currentPage}
+            className={`animate-in fade-in duration-150 ${isMobile ? 'pb-20' : ''}`}
+          >
+            {children}
+          </div>
         </main>
       </div>
 

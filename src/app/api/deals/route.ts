@@ -31,15 +31,28 @@ export async function GET(request: NextRequest) {
     const [deals, total] = await Promise.all([
       db.deal.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          code: true,
+          type: true,
+          value: true,
+          expectedCommission: true,
+          actualCommission: true,
+          stage: true,
+          expectedCloseDate: true,
+          risk: true,
+          nextStep: true,
+          notes: true,
+          createdAt: true,
+          updatedAt: true,
           user: { select: { id: true, name: true, role: true } },
           dealCustomers: {
-            include: {
+            select: {
               customer: { select: { id: true, name: true, code: true, phone: true } },
             },
           },
           dealProperties: {
-            include: {
+            select: {
               property: { select: { id: true, code: true, title: true, price: true, area: true } },
             },
           },

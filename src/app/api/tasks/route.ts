@@ -58,20 +58,31 @@ export async function GET(request: NextRequest) {
     const [tasks, total] = await Promise.all([
       db.task.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          priority: true,
+          status: true,
+          dueDate: true,
+          dueTime: true,
+          description: true,
+          isRecurring: true,
+          assignedTo: true,
+          createdAt: true,
           user: { select: { id: true, name: true, role: true } },
           taskCustomers: {
-            include: {
+            select: {
               customer: { select: { id: true, name: true, code: true } },
             },
           },
           taskOwners: {
-            include: {
+            select: {
               owner: { select: { id: true, name: true, code: true } },
             },
           },
           taskDeals: {
-            include: {
+            select: {
               deal: { select: { id: true, code: true, stage: true } },
             },
           },
