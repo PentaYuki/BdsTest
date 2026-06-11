@@ -67,6 +67,8 @@ interface DashboardData {
     totalDealValue: number
     expectedCommission: number
     actualCommission: number
+    change?: string
+    trend?: 'up' | 'down'
   }
   deals: {
     total: number
@@ -74,16 +76,22 @@ interface DashboardData {
     completed: number
     lost: number
     byStage: Record<string, number>
+    change?: string
+    trend?: 'up' | 'down'
   }
   customers: {
     newThisMonth: number
     bySource: { source: string; count: number }[]
     byHeat: { level: string; count: number }[]
+    change?: string
+    trend?: 'up' | 'down'
   }
   properties: {
     newThisMonth: number
     active: number
     hot: number
+    change?: string
+    trend?: 'up' | 'down'
   }
   tasks: {
     today: number
@@ -871,6 +879,7 @@ export function DashboardPage() {
   }
 
   const revenue = essential?.revenue
+  const deals = essential?.deals
   const tasks = essential?.tasks
   const customers = essential?.customers
   const properties = essential?.properties
@@ -891,17 +900,17 @@ export function DashboardPage() {
             <KPICard
               label="Doanh thu tháng này"
               value={formatCurrency(revenue?.totalCommission || 0)}
-              change="12.5%"
-              trend="up"
+              change={revenue?.change}
+              trend={revenue?.trend}
               icon={DollarSign}
               color="text-emerald-500"
               bg="bg-emerald-50"
             />
             <KPICard
               label="Giao dịch mới"
-              value={(essential?.deals?.completed || 0).toString()}
-              change="4.2%"
-              trend="up"
+              value={(deals?.completed || 0).toString()}
+              change={deals?.change}
+              trend={deals?.trend}
               icon={GitFork}
               color="text-blue-500"
               bg="bg-blue-50"
@@ -909,8 +918,8 @@ export function DashboardPage() {
             <KPICard
               label="Khách hàng mới"
               value={(customers?.newThisMonth || 0).toString()}
-              change="8.1%"
-              trend="up"
+              change={customers?.change}
+              trend={customers?.trend}
               icon={Users}
               color="text-indigo-500"
               bg="bg-indigo-50"
@@ -918,8 +927,8 @@ export function DashboardPage() {
             <KPICard
               label="Sản phẩm mới"
               value={(properties?.newThisMonth || 0).toString()}
-              change="2.4%"
-              trend="down"
+              change={properties?.change}
+              trend={properties?.trend}
               icon={Warehouse}
               color="text-amber-500"
               bg="bg-amber-50"
