@@ -193,6 +193,129 @@ export async function GET(request: NextRequest) {
       _count: { id: true },
     });
 
+    // Top 5 properties
+    const properties = await db.property.findMany({
+      select: {
+        id: true,
+        title: true,
+        code: true,
+        dealProperties: {
+          where: {
+            deal: { stage: 'completed' },
+          },
+          select: {
+            deal: {
+              select: {
+                value: true,
+                actualCommission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const propertyRankings = properties
+      .map((p) => {
+        const dealsCount = p.dealProperties.length;
+        const revenue = p.dealProperties.reduce((sum, dp) => sum + (dp.deal.actualCommission || 0), 0);
+        return {
+          name: p.title || p.code,
+          deals: dealsCount,
+          revenue,
+        };
+      })
+      .filter((p) => p.deals > 0)
+      .sort((a, b) => b.revenue - a.revenue || b.deals - a.deals)
+      .slice(0, 5);
+
+    // Top 5 sources
+    const customers = await db.customer.findMany({
+      where: { source: { not: null } },
+      select: {
+        source: true,
+        dealCustomers: {
+          where: {
+            deal: { stage: 'completed' },
+          },
+          select: { id: true },
+        },
+      },
+    });
+
+    const sourceMap: Record<string, { leads: number; deals: number }> = {};
+    customers.forEach((c) => {
+      const src = c.source || 'unknown';
+      if (!sourceMap[src]) {
+        sourceMap[src] = { leads: 0, deals: 0 };
+      }
+      sourceMap[src].leads++;
+      sourceMap[src].deals += c.dealCustomers.length;
+    });
+
+    const sourceRankings = Object.entries(sourceMap)
+      .map(([name, stats]) => {
+        const displayNames: Record<string, string> = {
+          facebook: 'Facebook',
+          zalo: 'Zalo',
+          tiktok: 'TikTok',
+          website: 'Website',
+          referral: 'Giới thiệu',
+          direct: 'Trực tiếp',
+          listing: 'Listing',
+        };
+        return {
+          name: displayNames[name.toLowerCase()] || name,
+          leads: stats.leads,
+          deals: stats.deals,
+        };
+      })
+      .sort((a, b) => b.deals - a.deals || b.leads - a.leads)
+      .slice(0, 5);
+
+    // Top 5 owners
+    const owners = await db.owner.findMany({
+      select: {
+        id: true,
+        name: true,
+        properties: {
+          select: {
+            dealProperties: {
+              where: {
+                deal: { stage: 'completed' },
+              },
+              select: {
+                deal: {
+                  select: {
+                    value: true,
+                    actualCommission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const ownerRankings = owners
+      .map((o) => {
+        let dealsCount = 0;
+        let revenue = 0;
+        o.properties.forEach((p) => {
+          dealsCount += p.dealProperties.length;
+          revenue += p.dealProperties.reduce((sum, dp) => sum + (dp.deal.actualCommission || 0), 0);
+        });
+        return {
+          name: o.name,
+          deals: dealsCount,
+          revenue,
+        };
+      })
+      .filter((o) => o.deals > 0)
+      .sort((a, b) => b.revenue - a.revenue || b.deals - a.deals)
+      .slice(0, 5);
+
     return NextResponse.json({
       data: {
         summary: {
@@ -218,6 +341,9 @@ export async function GET(request: NextRequest) {
           type: c.type,
           count: c._count.id,
         })),
+        topProperties: propertyRankings,
+        topSources: sourceRankings,
+        topOwners: ownerRankings,
       },
     });
   } catch (error) {

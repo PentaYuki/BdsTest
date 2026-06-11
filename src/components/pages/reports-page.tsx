@@ -62,63 +62,6 @@ interface KPIData {
   closingRate: KPIValue
 }
 
-const revenueByWeek = [
-  { week: 'T1', revenue: 3200000000 },
-  { week: 'T2', revenue: 4500000000 },
-  { week: 'T3', revenue: 5800000000 },
-  { week: 'T4', revenue: 6200000000 },
-  { week: 'T5', revenue: 4800000000 },
-]
-
-const leadsBySource = [
-  { source: 'facebook', value: 28, color: '#3b82f6' },
-  { source: 'zalo', value: 18, color: '#2563eb' },
-  { source: 'tiktok', value: 12, color: '#111827' },
-  { source: 'website', value: 8, color: '#10b981' },
-  { source: 'referral', value: 6, color: '#8b5cf6' },
-  { source: 'direct', value: 4, color: '#64748b' },
-]
-
-const dealsByArea = [
-  { area: 'Q.1', deals: 3 },
-  { area: 'Q.2', deals: 2 },
-  { area: 'Q.7', deals: 5 },
-  { area: 'Q.9', deals: 1 },
-  { area: 'Bình Thạnh', deals: 4 },
-  { area: 'Thủ Đức', deals: 3 },
-]
-
-const dealsByType = [
-  { type: 'Căn hộ', value: 6, color: '#3b82f6' },
-  { type: 'Nhà phố', value: 3, color: '#f59e0b' },
-  { type: 'Biệt thự', value: 1, color: '#10b981' },
-  { type: 'Đất', value: 2, color: '#ef4444' },
-  { type: 'Thương mại', value: 1, color: '#8b5cf6' },
-]
-
-const topProperties = [
-  { name: 'VHM Grand Park A-102', deals: 3, revenue: 9600000000 },
-  { name: 'Landmark 81 D-2201', deals: 2, revenue: 6400000000 },
-  { name: 'Sunset Villa #3', deals: 1, revenue: 8500000000 },
-  { name: 'Nhà phố Phú Mỹ', deals: 2, revenue: 5200000000 },
-  { name: 'VCP E-1502', deals: 1, revenue: 5600000000 },
-]
-
-const topSources = [
-  { name: 'Facebook', leads: 28, deals: 4 },
-  { name: 'Zalo', leads: 18, deals: 3 },
-  { name: 'TikTok', leads: 12, deals: 2 },
-  { name: 'Website', leads: 8, deals: 1 },
-  { name: 'Giới thiệu', leads: 6, deals: 3 },
-]
-
-const topOwners = [
-  { name: 'Trần Thị B', deals: 3, revenue: 12000000000 },
-  { name: 'Nguyễn Văn C', deals: 2, revenue: 6400000000 },
-  { name: 'Lê Hoàng Đệ', deals: 2, revenue: 8500000000 },
-  { name: 'Phạm Minh D', deals: 1, revenue: 5200000000 },
-  { name: 'Hoàng Văn E', deals: 1, revenue: 3200000000 },
-]
 
 /* ─── Chart Config ───────────────────────────────────────────── */
 
@@ -260,7 +203,100 @@ export function ReportsPage() {
     },
   })
 
-  if (isLoading) {
+  // 1. Revenue query
+  const { data: revenueReportData, isLoading: isRevenueLoading } = useQuery({
+    queryKey: ['reports-revenue'],
+    queryFn: async () => {
+      const res = await fetch('/api/reports?type=revenue')
+      if (!res.ok) throw new Error('Failed to fetch revenue')
+      const json = await res.json()
+      return json.data || []
+    }
+  })
+
+  // 2. Source query
+  const { data: sourceReportData, isLoading: isSourceLoading } = useQuery({
+    queryKey: ['reports-source'],
+    queryFn: async () => {
+      const res = await fetch('/api/reports?type=source')
+      if (!res.ok) throw new Error('Failed to fetch source')
+      const json = await res.json()
+      return json.data || []
+    }
+  })
+
+  // 3. Area query
+  const { data: areaReportData, isLoading: isAreaLoading } = useQuery({
+    queryKey: ['reports-area'],
+    queryFn: async () => {
+      const res = await fetch('/api/reports?type=area')
+      if (!res.ok) throw new Error('Failed to fetch area')
+      const json = await res.json()
+      return json.data || []
+    }
+  })
+
+  // 4. Overview query
+  const { data: overviewReportData, isLoading: isOverviewLoading } = useQuery({
+    queryKey: ['reports-overview'],
+    queryFn: async () => {
+      const res = await fetch('/api/reports?type=overview')
+      if (!res.ok) throw new Error('Failed to fetch overview')
+      const json = await res.json()
+      return json.data || null
+    }
+  })
+
+  const revenueChartData = (revenueReportData || []).map((item: any) => ({
+    week: item.month,
+    revenue: item.totalRevenue,
+  })).slice(-5)
+
+  const sourceColors: Record<string, string> = {
+    facebook: '#3b82f6',
+    zalo: '#2563eb',
+    tiktok: '#111827',
+    website: '#10b981',
+    referral: '#8b5cf6',
+    direct: '#64748b',
+    listing: '#f59e0b',
+  }
+  const leadsChartData = (sourceReportData || []).map((item: any) => ({
+    source: item.source,
+    value: item.customerCount,
+    color: sourceColors[item.source.toLowerCase()] || '#64748b',
+  }))
+
+  const areaChartData = (areaReportData || []).map((item: any) => ({
+    area: item.area,
+    deals: item.dealCount,
+  }))
+
+  const typeLabels: Record<string, string> = {
+    apartment: 'Căn hộ',
+    house: 'Nhà phố',
+    villa: 'Biệt thự',
+    land: 'Đất',
+    shophouse: 'Thương mại',
+  }
+  const typeColors: Record<string, string> = {
+    apartment: '#3b82f6',
+    house: '#f59e0b',
+    villa: '#10b981',
+    land: '#ef4444',
+    shophouse: '#8b5cf6',
+  }
+  const dealsByTypeChartData = (overviewReportData?.propertyTypes || []).map((item: any) => ({
+    type: typeLabels[item.type] || item.type,
+    value: item.count,
+    color: typeColors[item.type] || '#64748b',
+  }))
+
+  const topPropertiesList = overviewReportData?.topProperties || []
+  const topSourcesList = overviewReportData?.topSources || []
+  const topOwnersList = overviewReportData?.topOwners || []
+
+  if (isLoading || isRevenueLoading || isSourceLoading || isAreaLoading || isOverviewLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64 rounded-lg" />
@@ -370,7 +406,7 @@ export function ReportsPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={revenueChartConfig} className="h-[250px] w-full">
-              <BarChart data={revenueByWeek} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <BarChart data={revenueChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="week" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={11} tickFormatter={(v: number) => formatCurrency(v)} />
@@ -391,7 +427,7 @@ export function ReportsPage() {
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Pie
-                  data={leadsBySource}
+                  data={leadsChartData}
                   dataKey="value"
                   nameKey="source"
                   cx="50%"
@@ -401,7 +437,7 @@ export function ReportsPage() {
                   strokeWidth={2}
                   stroke="white"
                 >
-                  {leadsBySource.map((entry, i) => (
+                  {leadsChartData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
@@ -418,7 +454,7 @@ export function ReportsPage() {
           </CardHeader>
           <CardContent>
             <ChartContainer config={areaChartConfig} className="h-[250px] w-full">
-              <BarChart data={dealsByArea} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <BarChart data={areaChartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="area" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
@@ -439,7 +475,7 @@ export function ReportsPage() {
               <PieChart>
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Pie
-                  data={dealsByType}
+                  data={dealsByTypeChartData}
                   dataKey="value"
                   nameKey="type"
                   cx="50%"
@@ -449,7 +485,7 @@ export function ReportsPage() {
                   strokeWidth={2}
                   stroke="white"
                 >
-                  {dealsByType.map((entry, i) => (
+                  {dealsByTypeChartData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
@@ -472,7 +508,7 @@ export function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {topProperties.map((item, i) => (
+              {topPropertiesList.map((item: any, i: number) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
                     i === 0 ? 'bg-amber-100 text-amber-700' :
@@ -505,7 +541,7 @@ export function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {topSources.map((item, i) => (
+              {topSourcesList.map((item: any, i: number) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
                     i === 0 ? 'bg-amber-100 text-amber-700' :
@@ -538,7 +574,7 @@ export function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {topOwners.map((item, i) => (
+              {topOwnersList.map((item: any, i: number) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
                     i === 0 ? 'bg-amber-100 text-amber-700' :

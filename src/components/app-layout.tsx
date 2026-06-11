@@ -4,6 +4,11 @@ import React from 'react'
 import { useAppStore, type NavPage } from '@/lib/store'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { useQuery } from '@tanstack/react-query'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -246,11 +251,48 @@ function MobileBottomNav() {
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { currentPage, sidebarOpen, setSidebarOpen } = useAppStore()
+  const { currentPage, sidebarOpen, setSidebarOpen, navigate } = useAppStore()
   const isMobile = useIsMobile()
   const [isHovered, setIsHovered] = React.useState(false)
+  const [searchOpen, setSearchOpen] = React.useState(false)
+  const [searchQuery, setSearchQuery] = React.useState('')
 
   const pageTitle = pageTitles[currentPage] || 'Tổng quan'
+
+  // Global search query
+  const { data: searchResults } = useQuery({
+    queryKey: ['global-search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery.trim()) return { properties: [], customers: [], owners: [] }
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+      if (!res.ok) throw new Error('Search failed')
+      const json = await res.json()
+      return json.data || { properties: [], customers: [], owners: [] }
+    },
+    enabled: searchQuery.trim().length > 0,
+  })
+
+  // Pending tasks query for notifications
+  const { data: pendingTasksData } = useQuery({
+    queryKey: ['notifications-tasks'],
+    queryFn: async () => {
+      const res = await fetch('/api/tasks?status=pending&limit=10')
+      if (!res.ok) throw new Error('Failed to fetch tasks')
+      return res.json()
+    },
+    refetchInterval: 30000,
+  })
+
+  const pendingTasks = pendingTasksData?.data || []
+  const now = new Date()
+  const todayStr = now.toISOString().slice(0, 10)
+
+  const activeNotificationCount = pendingTasks.filter((task: any) => {
+    const taskDateStr = new Date(task.dueDate).toISOString().slice(0, 10)
+    const isToday = taskDateStr === todayStr
+    const isOverdue = new Date(task.dueDate) < now && taskDateStr !== todayStr
+    return isToday || isOverdue
+  }).length
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-slate-50">
@@ -304,13 +346,98 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </h2>
 
           <div className="ml-auto flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="text-slate-500">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-500"
+              onClick={() => setSearchOpen(true)}
+            >
               <Search className="size-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="relative text-slate-500">
-              <Bell className="size-5" />
-              <span className="absolute top-2 right-2 size-2 rounded-full bg-red-500" />
-            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative text-slate-500">
+                  <Bell className="size-5" />
+                  {activeNotificationCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white ring-2 ring-white">
+                      {activeNotificationCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0 overflow-hidden" align="end">
+                <div className="flex items-center justify-between border-b px-4 py-3 bg-slate-50">
+                  <h3 className="text-sm font-semibold text-slate-700">Công việc cần xử lý</h3>
+                  <Badge variant="outline" className="text-[10px]">
+                    {activeNotificationCount} khẩn cấp
+                  </Badge>
+                </div>
+                <ScrollArea className="max-h-[300px]">
+                  {pendingTasks.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-slate-400">
+                      Không có công việc cần xử lý.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {pendingTasks.map((task: any) => {
+                        const taskDate = new Date(task.dueDate)
+                        const taskDateStr = taskDate.toISOString().slice(0, 10)
+                        const isToday = taskDateStr === todayStr
+                        const isOverdue = taskDate < now && taskDateStr !== todayStr
+
+                        return (
+                          <div
+                            key={task.id}
+                            onClick={() => {
+                              navigate('calendar')
+                            }}
+                            className="p-3 hover:bg-slate-50 cursor-pointer transition-colors space-y-1"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase ${
+                                task.priority === 'high' ? 'bg-red-50 text-red-600' :
+                                task.priority === 'medium' ? 'bg-amber-50 text-amber-600' :
+                                'bg-slate-50 text-slate-600'
+                              }`}>
+                                {task.priority}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {task.dueTime ? `${task.dueTime} ` : ''}
+                                {taskDate.toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                            <p className="text-xs font-semibold text-slate-700 line-clamp-2">
+                              {task.title}
+                            </p>
+                            <div className="flex items-center gap-1.5 text-[10px]">
+                              {isOverdue && (
+                                <span className="text-red-500 font-medium">⚠️ Quá hạn</span>
+                              )}
+                              {isToday && (
+                                <span className="text-blue-500 font-medium">📅 Hôm nay</span>
+                              )}
+                              {!isToday && !isOverdue && (
+                                <span className="text-slate-400 font-medium">Sắp tới</span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+                <div className="border-t p-2 bg-slate-50 text-center">
+                  <button
+                    onClick={() => navigate('calendar')}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                  >
+                    Xem lịch công việc chi tiết
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
             {!isMobile && (
               <Avatar className="size-8 ml-1">
                 <AvatarFallback className="bg-blue-500 text-white text-xs font-semibold">
@@ -337,6 +464,123 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Quick Add Dialog */}
       <QuickAddDialog />
+
+      {/* Global Search Dialog */}
+      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden">
+          <div className="flex items-center border-b px-4 py-3 gap-3">
+            <Search className="size-5 text-slate-400 shrink-0" />
+            <Input
+              placeholder="Tìm kiếm tài sản (tên, mã, địa chỉ), khách hàng, chủ nhà..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 p-0 h-auto text-base placeholder:text-slate-400"
+              autoFocus
+            />
+          </div>
+          <ScrollArea className="max-h-[350px]">
+            {searchQuery.trim() === '' ? (
+              <div className="p-6 text-center text-sm text-slate-400">
+                Nhập từ khóa để tìm kiếm thông tin nhanh...
+              </div>
+            ) : !searchResults ? (
+              <div className="p-6 text-center text-sm text-slate-400">
+                Đang tìm kiếm...
+              </div>
+            ) : (searchResults.properties.length === 0 && searchResults.customers.length === 0 && searchResults.owners.length === 0) ? (
+              <div className="p-6 text-center text-sm text-slate-400">
+                Không tìm thấy kết quả nào trùng khớp.
+              </div>
+            ) : (
+              <div className="p-3 space-y-4">
+                {searchResults.properties.length > 0 && (
+                  <div>
+                    <h3 className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Kho hàng ({searchResults.properties.length})
+                    </h3>
+                    <div className="space-y-0.5">
+                      {searchResults.properties.map((prop: any) => (
+                        <button
+                          key={prop.id}
+                          onClick={() => {
+                            navigate('property-detail', prop.id)
+                            setSearchOpen(false)
+                            setSearchQuery('')
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-slate-100 rounded-lg transition-colors text-slate-700 font-medium cursor-pointer"
+                        >
+                          <span className="truncate">{prop.title}</span>
+                          <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-mono ml-2 shrink-0">
+                            {prop.code}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {searchResults.customers.length > 0 && (
+                  <div>
+                    <h3 className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Khách hàng ({searchResults.customers.length})
+                    </h3>
+                    <div className="space-y-0.5">
+                      {searchResults.customers.map((cust: any) => (
+                        <button
+                          key={cust.id}
+                          onClick={() => {
+                            navigate('customer-detail', cust.id)
+                            setSearchOpen(false)
+                            setSearchQuery('')
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-slate-100 rounded-lg transition-colors text-slate-700 font-medium cursor-pointer"
+                        >
+                          <div className="flex flex-col min-w-0">
+                            <span className="truncate">{cust.name}</span>
+                            <span className="text-xs text-slate-400">{cust.phone}</span>
+                          </div>
+                          <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded font-mono ml-2 shrink-0">
+                            {cust.code}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {searchResults.owners.length > 0 && (
+                  <div>
+                    <h3 className="px-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Chủ nhà ({searchResults.owners.length})
+                    </h3>
+                    <div className="space-y-0.5">
+                      {searchResults.owners.map((owner: any) => (
+                        <button
+                          key={owner.id}
+                          onClick={() => {
+                            navigate('owner-detail', owner.id)
+                            setSearchOpen(false)
+                            setSearchQuery('')
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-slate-100 rounded-lg transition-colors text-slate-700 font-medium cursor-pointer"
+                        >
+                          <div className="flex flex-col min-w-0">
+                            <span className="truncate">{owner.name}</span>
+                            <span className="text-xs text-slate-400">{owner.phone}</span>
+                          </div>
+                          <span className="text-[10px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded font-mono ml-2 shrink-0">
+                            {owner.code}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

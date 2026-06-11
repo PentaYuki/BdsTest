@@ -5,6 +5,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Dialog,
   DialogContent,
@@ -38,8 +41,9 @@ import {
   ChevronRight,
   Building2,
   Users,
+  Check,
 } from 'lucide-react'
-import { getDocStatusLabel, getDocStatusColor } from '@/lib/format'
+import { getDocStatusLabel, getDocStatusColor, formatCurrency } from '@/lib/format'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -117,6 +121,98 @@ export function DocumentsPage() {
   const [showUploadDialog, setShowUploadDialog] = useState(false)
   const [viewMode, setViewMode] = useState<'folders' | 'list'>('folders')
 
+  const queryClient = useQueryClient()
+
+  // Fetch documents from database via API
+  const { data: documents = [], isLoading } = useQuery<Document[]>({
+    queryKey: ['documents'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/documents')
+        if (!res.ok) throw new Error('Failed to fetch documents')
+        const json = await res.json()
+        return json.data || []
+      } catch (error) {
+        console.error('Error fetching documents, fallback to mock:', error)
+        return mockDocuments
+      }
+    }
+  })
+
+  // Fetch properties & deals for links in Upload Dialog
+  const { data: propertiesData } = useQuery({
+    queryKey: ['docs-properties'],
+    queryFn: async () => {
+      const res = await fetch('/api/properties?limit=100')
+      return res.json()
+    }
+  })
+  const propertiesList = propertiesData?.data || []
+
+  const { data: dealsData } = useQuery({
+    queryKey: ['docs-deals'],
+    queryFn: async () => {
+      const res = await fetch('/api/deals?limit=100')
+      return res.json()
+    }
+  })
+  const dealsList = dealsData?.data || []
+
+  // Upload Form states
+  const [uploadForm, setUploadForm] = useState({
+    name: '',
+    type: 'red_book',
+    entityType: 'property' as 'property' | 'deal',
+    entityId: '',
+  })
+  const [uploading, setUploading] = useState(false)
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!uploadForm.name || !uploadForm.entityId) {
+      toast.error('Vui lòng nhập đầy đủ thông tin!')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const fileExt = uploadForm.type === 'photo' ? 'jpg' : 'pdf'
+      const fileUrl = `/uploads/${uploadForm.name.toLowerCase().replace(/\s+/g, '-')}.${fileExt}`
+
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: uploadForm.name,
+          type: uploadForm.type,
+          fileUrl,
+          entityType: uploadForm.entityType,
+          entityId: uploadForm.entityId,
+          status: 'sufficient',
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Upload failed')
+      }
+
+      toast.success('Đã tải lên tài liệu mới thành công!')
+      queryClient.invalidateQueries({ queryKey: ['documents'] })
+      setShowUploadDialog(false)
+      setUploadForm({
+        name: '',
+        type: 'red_book',
+        entityType: 'property',
+        entityId: '',
+      })
+    } catch (error) {
+      console.error(error)
+      toast.error('Có lỗi xảy ra khi tải tài liệu lên')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const propertyFilters = [
     { key: 'all', label: 'Tất cả' },
     { key: 'rent', label: 'Cho thuê' },
@@ -130,7 +226,7 @@ export function DocumentsPage() {
     { key: 'binhchanh', label: 'Bình Chánh' },
   ]
 
-  const filteredDocs = mockDocuments.filter(doc => {
+  const filteredDocs = documents.filter(doc => {
     if (search && !doc.name.toLowerCase().includes(search.toLowerCase()) && !doc.entityName.toLowerCase().includes(search.toLowerCase())) return false
     if (activeCategory !== 'all' && doc.category !== activeCategory) return false
     if (activePropertyFilter !== 'all' && !doc.propertyTags?.includes(activePropertyFilter)) return false
@@ -139,6 +235,24 @@ export function DocumentsPage() {
 
   // Grouping documents by Property for Folder view
   const propertiesWithDocs = Array.from(new Set(filteredDocs.map(d => d.entityName)))
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-64 rounded-lg animate-pulse" />
+          <Skeleton className="h-4 w-96 rounded-lg mt-2 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 rounded-lg animate-pulse" />)}
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg animate-pulse" />
+        <div className="space-y-4">
+          {[1, 2].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg animate-pulse" />)}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -181,7 +295,7 @@ export function DocumentsPage() {
       {/* Category Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {categories.map(cat => {
-          const count = mockDocuments.filter(d => d.category === cat.id).length
+          const count = documents.filter(d => d.category === cat.id).length
           const isActive = activeCategory === cat.id
           return (
             <div
@@ -357,53 +471,102 @@ export function DocumentsPage() {
       {/* Upload Dialog */}
       <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Tải lên hồ sơ mới</DialogTitle>
-            <DialogDescription>Đảm bảo hồ sơ rõ nét để gửi cho khách hàng</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Tên hồ sơ</Label>
-              <Input placeholder="Ví dụ: Sổ hồng mặt trước..." />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleUpload}>
+            <DialogHeader>
+              <DialogTitle>Tải lên hồ sơ mới</DialogTitle>
+              <DialogDescription>Đảm bảo hồ sơ rõ nét để gửi cho khách hàng</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2 border-0">
               <div className="space-y-2">
-                <Label>Danh mục chuyên môn</Label>
-                <Select>
+                <Label>Tên hồ sơ *</Label>
+                <Input
+                  placeholder="Ví dụ: Sổ hồng mặt trước..."
+                  value={uploadForm.name}
+                  onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Liên kết với *</Label>
+                  <Select
+                    value={uploadForm.entityType}
+                    onValueChange={(val: 'property' | 'deal') =>
+                      setUploadForm({ ...uploadForm, entityType: val, entityId: '' })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="property">Bất động sản</SelectItem>
+                      <SelectItem value="deal">Giao dịch (Deal)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Loại giấy tờ *</Label>
+                  <Select
+                    value={uploadForm.type}
+                    onValueChange={(val) => setUploadForm({ ...uploadForm, type: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="red_book">Sổ hồng</SelectItem>
+                      <SelectItem value="id_card">CCCD</SelectItem>
+                      <SelectItem value="deposit_contract">HĐ đặt cọc</SelectItem>
+                      <SelectItem value="brokerage_contract">HĐ môi giới</SelectItem>
+                      <SelectItem value="planning">Quy hoạch</SelectItem>
+                      <SelectItem value="marital_status">Hôn nhân</SelectItem>
+                      <SelectItem value="photo">Hình ảnh</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Chọn mục liên kết *</Label>
+                <Select
+                  value={uploadForm.entityId}
+                  onValueChange={(val) => setUploadForm({ ...uploadForm, entityId: val })}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Chọn danh mục" />
+                    <SelectValue placeholder="Chọn mục..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
-                    ))}
+                    {uploadForm.entityType === 'property'
+                      ? propertiesList.map((p: any) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.title} ({p.code})
+                          </SelectItem>
+                        ))
+                      : dealsList.map((d: any) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.code} - {d.type === 'sell' ? 'Bán' : 'Thuê'}
+                          </SelectItem>
+                        ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Loại giấy tờ</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn loại" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="red_book">Sổ hồng</SelectItem>
-                    <SelectItem value="id_card">CCCD</SelectItem>
-                    <SelectItem value="contract">Hợp đồng</SelectItem>
-                    <SelectItem value="planning">Quy hoạch</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              <div className="border-2 border-dashed rounded-xl p-6 text-center bg-slate-50">
+                <Upload className="size-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground">Chọn file PDF hoặc Hình ảnh</p>
               </div>
             </div>
-            <div className="border-2 border-dashed rounded-xl p-8 text-center bg-slate-50">
-              <Upload className="size-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Chọn file PDF hoặc Hình ảnh</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUploadDialog(false)}>Hủy</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700">Tải lên</Button>
-          </DialogFooter>
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={() => setShowUploadDialog(false)}>
+                Hủy
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={uploading}>
+                {uploading ? 'Đang tải lên...' : 'Tải lên'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

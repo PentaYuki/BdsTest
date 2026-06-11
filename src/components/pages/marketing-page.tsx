@@ -68,14 +68,6 @@ const mockCampaigns: Campaign[] = [
   { id: '7', name: 'Vinhomes Central Park - 3PN', channel: 'zalo', postDate: '2025-03-12', propertyLinked: 'VCP E-1502', leads: 5, viewings: 2, deals: 1, revenue: 5600000000, cost: 1500000 },
 ]
 
-const leadByChannel = [
-  { name: 'Facebook', value: 32, color: '#3b82f6' },
-  { name: 'Zalo', value: 13, color: '#2563eb' },
-  { name: 'TikTok', value: 15, color: '#111827' },
-  { name: 'Website', value: 6, color: '#10b981' },
-  { name: 'Listing', value: 10, color: '#f59e0b' },
-]
-
 /* ─── Channel Badge ──────────────────────────────────────────── */
 
 function ChannelBadge({ channel }: { channel: string }) {
@@ -147,6 +139,16 @@ export function MarketingPage() {
   const totalRevenue = campaigns.reduce((sum, c) => sum + c.revenue, 0)
   const totalCost = campaigns.reduce((sum, c) => sum + c.cost, 0)
   const totalViewings = campaigns.reduce((sum, c) => sum + c.viewings, 0)
+
+
+  // Effectiveness
+  const leadByChannel = [
+    { name: 'Facebook', value: campaigns.filter(c => c.channel === 'facebook').reduce((sum, c) => sum + c.leads, 0), color: '#3b82f6' },
+    { name: 'Zalo', value: campaigns.filter(c => c.channel === 'zalo').reduce((sum, c) => sum + c.leads, 0), color: '#2563eb' },
+    { name: 'TikTok', value: campaigns.filter(c => c.channel === 'tiktok').reduce((sum, c) => sum + c.leads, 0), color: '#111827' },
+    { name: 'Website', value: campaigns.filter(c => c.channel === 'website').reduce((sum, c) => sum + c.leads, 0), color: '#10b981' },
+    { name: 'Listing', value: campaigns.filter(c => c.channel === 'listing').reduce((sum, c) => sum + c.leads, 0), color: '#f59e0b' },
+  ]
 
   // Effectiveness
   const costPerLead = totalLeads > 0 ? totalCost / totalLeads : 0
