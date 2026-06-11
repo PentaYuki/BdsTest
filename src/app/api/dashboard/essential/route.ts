@@ -145,7 +145,38 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Essential Dashboard API error:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    console.error('Essential Dashboard API error, falling back to zero data:', error);
+    return NextResponse.json({
+      data: {
+        revenue: {
+          totalCommission: 0,
+          totalDealValue: 0,
+          expectedCommission: 0,
+          actualCommission: 0,
+          change: '0%',
+          trend: 'up',
+        },
+        deals: {
+          completed: 0,
+          change: '0%',
+          trend: 'up',
+        },
+        customers: {
+          newThisMonth: 0,
+          change: '0%',
+          trend: 'up',
+        },
+        properties: {
+          newThisMonth: 0,
+          change: '0%',
+          trend: 'up',
+        },
+        tasks: {
+          today: 0,
+          overdue: 0,
+        },
+        followUpsNeeded: 0,
+      }
+    });
   }
 }

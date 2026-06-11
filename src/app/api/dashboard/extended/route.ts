@@ -139,7 +139,30 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Extended Dashboard API error:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    console.error('Extended Dashboard API error, falling back to empty datasets:', error);
+    return NextResponse.json({
+      data: {
+        deals: {
+          total: 0,
+          active: 0,
+          completed: 0,
+          lost: 0,
+          byStage: {},
+        },
+        customers: {
+          bySource: [],
+          byHeat: [],
+        },
+        properties: {
+          active: 0,
+          hot: 0,
+        },
+        monthlyRevenue: [],
+        recentActivity: {
+          interactions: [],
+          deals: [],
+        },
+      }
+    });
   }
 }

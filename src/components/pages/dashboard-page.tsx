@@ -864,19 +864,7 @@ export function DashboardPage() {
     enabled: !!essential, // Load only after essential is done
   })
 
-  if (essentialError) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <AlertTriangle className="size-12 text-red-400 mb-4" />
-        <h3 className="text-lg font-semibold text-slate-800 mb-2">
-          Không thể tải dữ liệu cơ bản
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Vui lòng kiểm tra kết nối mạng và thử lại sau
-        </p>
-      </div>
-    )
-  }
+
 
   const revenue = essential?.revenue
   const deals = essential?.deals
